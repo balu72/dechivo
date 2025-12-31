@@ -183,7 +183,7 @@ class JobDescriptionEnhancer:
         
         try:
             for keyword in keywords:
-                # Use Knowledge Graph for skill search
+                # Search Knowledge Graph directly by keyword
                 results = self.sfia_service.search_skills(keyword, limit=3)
                 
                 for skill in results:

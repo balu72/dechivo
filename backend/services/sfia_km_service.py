@@ -251,6 +251,7 @@ class SFIAKnowledgeService:
         if not safe_keyword:
             return []
         
+        # SFIA uses skillDescription and skillNotes properties
         query = f"""
         {self.prefixes}
         
@@ -261,14 +262,16 @@ class SFIAKnowledgeService:
                    rdfs:label ?label .
             
             OPTIONAL {{ 
-                ?skill sfia:inCategory ?categoryUri .
+                ?skill sfia:skillCategory ?categoryUri .
                 ?categoryUri rdfs:label ?category 
             }}
-            OPTIONAL {{ ?skill sfia:description ?description }}
+            OPTIONAL {{ ?skill sfia:skillDescription ?description }}
+            OPTIONAL {{ ?skill sfia:skillNotes ?notes }}
             
             FILTER (
                 regex(?label, "{safe_keyword}", "i") ||
                 regex(?description, "{safe_keyword}", "i") ||
+                regex(?notes, "{safe_keyword}", "i") ||
                 regex(?code, "{safe_keyword}", "i")
             )
         }}
