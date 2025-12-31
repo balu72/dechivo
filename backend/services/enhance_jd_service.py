@@ -1,7 +1,7 @@
 """
 Job Description Enhancement Service using LangGraph
 Workflow: Extract Skills → Map to SFIA → Set Skill Levels
-Enhanced with Knowledge Graph integration
+Enhanced with Knowledge Graph integration and Ollama LLM
 """
 
 import os
@@ -11,7 +11,19 @@ from operator import add
 
 from langgraph.graph import StateGraph, END
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_openai import ChatOpenAI
+
+# Try to import Ollama, fall back to OpenAI if not available
+try:
+    from langchain_ollama import ChatOllama
+    OLLAMA_AVAILABLE = True
+except ImportError:
+    OLLAMA_AVAILABLE = False
+
+try:
+    from langchain_openai import ChatOpenAI
+    OPENAI_AVAILABLE = True
+except ImportError:
+    OPENAI_AVAILABLE = False
 
 from .sfia_km_service import get_sfia_service
 
@@ -35,27 +47,57 @@ class EnhancementState(TypedDict):
 class JobDescriptionEnhancer:
     """
     LangGraph-based service to enhance job descriptions with SFIA skills
-    Enhanced with Knowledge Graph integration
+    Enhanced with Knowledge Graph integration and Ollama LLM support
     """
     
-    def __init__(self, openai_api_key: str = None, fuseki_url: str = None):
+    def __init__(self, fuseki_url: str = None, ollama_model: str = None):
         """
         Initialize the Job Description Enhancer
         
         Args:
-            openai_api_key: OpenAI API key (defaults to OPENAI_API_KEY env var)
             fuseki_url: Fuseki server URL (defaults to FUSEKI_URL env var)
+            ollama_model: Ollama model to use (defaults to OLLAMA_MODEL env var or 'llama3:latest')
         """
-        self.api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
-        if not self.api_key:
-            logger.warning("OpenAI API key not provided. Service may not function properly.")
+        self.llm = None
+        self.llm_provider = None
         
-        # Initialize LLM
-        self.llm = ChatOpenAI(
-            model="gpt-4o-mini",
-            temperature=0.3,
-            api_key=self.api_key
-        ) if self.api_key else None
+        # Get Ollama configuration
+        ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11434")
+        ollama_model = ollama_model or os.getenv("OLLAMA_MODEL", "llama3:latest")
+        
+        # Try Ollama first (local LLM)
+        if OLLAMA_AVAILABLE:
+            try:
+                self.llm = ChatOllama(
+                    model=ollama_model,
+                    base_url=ollama_url,
+                    temperature=0.3,
+                )
+                # Test connection
+                self.llm.invoke("test")
+                self.llm_provider = "Ollama"
+                logger.info(f"✅ Ollama LLM initialized: {ollama_model}")
+            except Exception as e:
+                logger.warning(f"⚠️ Ollama connection failed: {e}")
+                self.llm = None
+        
+        # Fall back to OpenAI if Ollama not available
+        if self.llm is None and OPENAI_AVAILABLE:
+            api_key = os.getenv("OPENAI_API_KEY")
+            if api_key:
+                try:
+                    self.llm = ChatOpenAI(
+                        model="gpt-4o-mini",
+                        temperature=0.3,
+                        api_key=api_key
+                    )
+                    self.llm_provider = "OpenAI"
+                    logger.info("✅ OpenAI LLM initialized")
+                except Exception as e:
+                    logger.warning(f"⚠️ OpenAI initialization failed: {e}")
+        
+        if self.llm is None:
+            logger.warning("⚠️ No LLM available - using fallback keyword extraction")
         
         # Initialize SFIA Knowledge Service
         self.sfia_service = get_sfia_service(fuseki_url=fuseki_url)
@@ -67,6 +109,7 @@ class JobDescriptionEnhancer:
             logger.info(f"   📊 KG Stats: {stats.get('total_skills', 0)} skills, {stats.get('total_categories', 0)} categories")
         else:
             logger.warning("⚠️ Knowledge Graph not available - using fallback mode")
+
         
         # Build the graph
         self.graph = self._build_graph()
@@ -284,29 +327,83 @@ class JobDescriptionEnhancer:
         Fallback method for keyword extraction without LLM
         Uses simple pattern matching and common skill keywords
         """
-        # Common technical and professional skill keywords
-        skill_patterns = [
-            r'\b(python|java|javascript|typescript|c\+\+|ruby|go|rust|php|swift)\b',
-            r'\b(data\s*analysis|machine\s*learning|ai|analytics)\b',
-            r'\b(project\s*management|agile|scrum|devops)\b',
-            r'\b(cloud|aws|azure|gcp|docker|kubernetes)\b',
-            r'\b(database|sql|nosql|mongodb|postgresql)\b',
-            r'\b(web\s*development|frontend|backend|fullstack)\b',
-            r'\b(testing|qa|quality\s*assurance|automation)\b',
-            r'\b(security|cybersecurity|infosec)\b',
-            r'\b(leadership|management|communication)\b',
-            r'\b(api|rest|graphql|microservices)\b'
-        ]
-        
         keywords = []
         text_lower = text.lower()
+        
+        # Common technical and professional skill keywords (direct match)
+        skill_patterns = [
+            # Programming languages
+            r'\b(python|java|javascript|typescript|c\+\+|ruby|go|rust|php|swift|kotlin|scala|perl)\b',
+            # Data & AI
+            r'\b(data\s*analysis|machine\s*learning|ai|analytics|data\s*science|deep\s*learning)\b',
+            # Methodologies
+            r'\b(project\s*management|agile|scrum|devops|kanban|waterfall)\b',
+            # Cloud & Infrastructure
+            r'\b(cloud|aws|azure|gcp|docker|kubernetes|terraform|ansible)\b',
+            # Database
+            r'\b(database|sql|nosql|mongodb|postgresql|mysql|redis|elasticsearch)\b',
+            # Web Development
+            r'\b(web\s*development|frontend|backend|fullstack|react|angular|vue|node\.?js)\b',
+            # Testing & QA
+            r'\b(testing|qa|quality\s*assurance|automation|selenium|cypress)\b',
+            # Security
+            r'\b(security|cybersecurity|infosec|penetration\s*testing)\b',
+            # Soft Skills
+            r'\b(leadership|management|communication|teamwork|collaboration)\b',
+            # Architecture
+            r'\b(api|rest|graphql|microservices|architecture|design\s*patterns)\b',
+            # General IT
+            r'\b(software|development|engineering|programming|coding)\b',
+            r'\b(systems?|network|infrastructure|operations)\b',
+            r'\b(business\s*analysis|requirements|stakeholder)\b',
+        ]
         
         for pattern in skill_patterns:
             matches = re.findall(pattern, text_lower, re.IGNORECASE)
             keywords.extend(matches)
         
+        # Role-based keywords (extract from job titles)
+        role_patterns = [
+            (r'\b(software\s*engineer)', 'software development'),
+            (r'\b(data\s*engineer)', 'data engineering'),
+            (r'\b(data\s*scientist)', 'data science'),
+            (r'\b(data\s*analyst)', 'data analytics'),
+            (r'\b(devops\s*engineer)', 'devops'),
+            (r'\b(cloud\s*engineer)', 'cloud'),
+            (r'\b(security\s*engineer|security\s*analyst)', 'security'),
+            (r'\b(qa\s*engineer|test\s*engineer)', 'testing'),
+            (r'\b(frontend\s*developer|front-end)', 'frontend'),
+            (r'\b(backend\s*developer|back-end)', 'backend'),
+            (r'\b(full\s*stack)', 'fullstack'),
+            (r'\b(machine\s*learning\s*engineer|ml\s*engineer)', 'machine learning'),
+            (r'\b(project\s*manager|program\s*manager)', 'project management'),
+            (r'\b(product\s*manager)', 'business analysis'),
+            (r'\b(scrum\s*master)', 'agile'),
+            (r'\b(solutions?\s*architect)', 'architecture'),
+            (r'\b(tech\s*lead|technical\s*lead)', 'leadership'),
+            (r'\b(system\s*administrator|sysadmin)', 'systems administration'),
+            (r'\b(network\s*engineer)', 'network'),
+            (r'\b(database\s*administrator|dba)', 'database'),
+        ]
+        
+        for pattern, mapped_keyword in role_patterns:
+            if re.search(pattern, text_lower, re.IGNORECASE):
+                keywords.append(mapped_keyword)
+        
+        # If still no keywords, try to extract any meaningful words
+        if not keywords:
+            # Extract any capitalized words that might be skills or technologies
+            capitalized = re.findall(r'\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b', text)
+            for cap in capitalized:
+                cap_lower = cap.lower()
+                # Skip common non-skill words
+                if cap_lower not in ['title', 'role', 'position', 'job', 'description', 'company', 'the', 'and', 'for', 'with']:
+                    keywords.append(cap_lower)
+        
         # Remove duplicates and clean up
         keywords = list(set(k.strip() for k in keywords if k.strip()))
+        
+        logger.info(f"Fallback extraction found keywords: {keywords}")
         
         return keywords[:20]  # Limit to top 20
     
@@ -505,27 +602,27 @@ class JobDescriptionEnhancer:
 _enhancer_instance = None
 
 
-def create_enhancer(openai_api_key: str = None, fuseki_url: str = None) -> JobDescriptionEnhancer:
+def create_enhancer(fuseki_url: str = None, ollama_model: str = None) -> JobDescriptionEnhancer:
     """
     Factory function to create a JobDescriptionEnhancer instance
     
     Args:
-        openai_api_key: OpenAI API key
         fuseki_url: Fuseki server URL
+        ollama_model: Ollama model to use
         
     Returns:
         JobDescriptionEnhancer instance
     """
-    return JobDescriptionEnhancer(openai_api_key=openai_api_key, fuseki_url=fuseki_url)
+    return JobDescriptionEnhancer(fuseki_url=fuseki_url, ollama_model=ollama_model)
 
 
-def get_enhancer(openai_api_key: str = None, fuseki_url: str = None) -> JobDescriptionEnhancer:
+def get_enhancer(fuseki_url: str = None, ollama_model: str = None) -> JobDescriptionEnhancer:
     """
     Get or create a singleton JobDescriptionEnhancer instance
     
     Args:
-        openai_api_key: OpenAI API key
         fuseki_url: Fuseki server URL
+        ollama_model: Ollama model to use
         
     Returns:
         JobDescriptionEnhancer instance
@@ -533,7 +630,7 @@ def get_enhancer(openai_api_key: str = None, fuseki_url: str = None) -> JobDescr
     global _enhancer_instance
     
     if _enhancer_instance is None:
-        _enhancer_instance = JobDescriptionEnhancer(openai_api_key=openai_api_key, fuseki_url=fuseki_url)
+        _enhancer_instance = JobDescriptionEnhancer(fuseki_url=fuseki_url, ollama_model=ollama_model)
     
     return _enhancer_instance
 
@@ -542,3 +639,4 @@ def reset_enhancer():
     """Reset the singleton enhancer instance (useful for testing)"""
     global _enhancer_instance
     _enhancer_instance = None
+
