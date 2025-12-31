@@ -6,7 +6,7 @@ from flask_jwt_extended import (
 )
 import os
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from models import db, User
 from auth import token_required, get_current_user
 from services.sfia_km_service import get_sfia_service
@@ -137,7 +137,7 @@ def login():
             return jsonify({'error': 'Account is deactivated'}), 403
         
         # Update last login
-        user.last_login = datetime.utcnow()
+        user.last_login = datetime.now(timezone.utc)
         db.session.commit()
         
         # Generate tokens (identity must be string)
@@ -183,7 +183,7 @@ def get_me():
     logger.info("GET /api/auth/me - Profile request")
     try:
         current_user_id = get_jwt_identity()
-        user = User.query.get(int(current_user_id))
+        user = db.session.get(User, int(current_user_id))
         
         if not user:
             return jsonify({'error': 'User not found'}), 404
@@ -272,7 +272,7 @@ def enhance_jd():
     logger.info("POST /api/enhance-jd - Enhancement request received")
     try:
         current_user_id = get_jwt_identity()
-        user = User.query.get(int(current_user_id))
+        user = db.session.get(User, int(current_user_id))
         
         data = request.get_json()
         job_description = data.get('job_description', '')
@@ -345,7 +345,7 @@ def upload_jd():
     logger.info("POST /api/upload-jd - File upload request received")
     try:
         current_user_id = get_jwt_identity()
-        user = User.query.get(int(current_user_id))
+        user = db.session.get(User, int(current_user_id))
         
         if 'file' not in request.files:
             logger.warning("Upload failed: No file in request")
