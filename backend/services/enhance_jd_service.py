@@ -13,6 +13,12 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_ollama import ChatOllama
 
 from .sfia_km_service import get_sfia_service
+from prompts.enhance_jd_prompts import (
+    get_skill_extraction_prompt,
+    get_jd_regeneration_system_prompt,
+    format_skill_extraction_user_prompt,
+    format_jd_regeneration_user_prompt
+)
 
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -26,6 +32,7 @@ class EnhancementState(TypedDict):
     extracted_keywords: List[str]
     sfia_skills: List[Dict[str, Any]]
     enhanced_skills: List[Dict[str, Any]]
+    regenerated_jd: str  # LLM-rewritten JD incorporating SFIA skills
     messages: Annotated[List, add]
     error: str
     kg_connected: bool
@@ -91,12 +98,14 @@ class JobDescriptionEnhancer:
         workflow.add_node("extract_skills", self.extract_skills_node)
         workflow.add_node("map_to_sfia", self.map_to_sfia_node)
         workflow.add_node("set_skill_level", self.set_skill_level_node)
+        workflow.add_node("regenerate_jd", self.regenerate_jd_node)
         
         # Define edges
         workflow.set_entry_point("extract_skills")
         workflow.add_edge("extract_skills", "map_to_sfia")
         workflow.add_edge("map_to_sfia", "set_skill_level")
-        workflow.add_edge("set_skill_level", END)
+        workflow.add_edge("set_skill_level", "regenerate_jd")
+        workflow.add_edge("regenerate_jd", END)
         
         return workflow.compile()
     
@@ -116,20 +125,9 @@ class JobDescriptionEnhancer:
         
         try:
             # Use Ollama LLM to extract skills
-            system_prompt = """You are an expert at analyzing job descriptions and extracting technical skills, 
-            competencies, and required capabilities. Extract all relevant skills mentioned in the job description.
-            
-            Focus on:
-            - Technical skills (programming languages, tools, technologies)
-            - Professional competencies (project management, communication, leadership)
-            - Domain expertise (data analysis, software development, cybersecurity, etc.)
-            - Soft skills when explicitly mentioned
-            
-            Return ONLY a comma-separated list of skill keywords, no explanations."""
-            
             messages = [
-                SystemMessage(content=system_prompt),
-                HumanMessage(content=f"Extract skills from this job description:\n\n{job_description}")
+                SystemMessage(content=get_skill_extraction_prompt()),
+                HumanMessage(content=format_skill_extraction_user_prompt(job_description))
             ]
             
             response = self.llm.invoke(messages)
@@ -270,6 +268,54 @@ class JobDescriptionEnhancer:
         
         return state
     
+    def regenerate_jd_node(self, state: EnhancementState) -> EnhancementState:
+        """
+        Node 4: Regenerate job description incorporating SFIA skills
+        
+        Args:
+            state: Current workflow state
+            
+        Returns:
+            Updated state with regenerated job description
+        """
+        logger.info("=== Node 4: Regenerating Job Description ===")
+        
+        job_description = state["job_description"]
+        enhanced_skills = state["enhanced_skills"]
+        
+        if not enhanced_skills:
+            logger.info("No SFIA skills to incorporate, using original JD")
+            state["regenerated_jd"] = job_description
+            state["messages"].append("No SFIA skills found to incorporate")
+            return state
+        
+        try:
+            # Format SFIA skills for the prompt
+            skills_text = "\n".join([
+                f"- {skill['name']} ({skill['code']}) - Level {skill['level']} ({skill['level_name']})"
+                for skill in enhanced_skills
+            ])
+            
+            messages = [
+                SystemMessage(content=get_jd_regeneration_system_prompt()),
+                HumanMessage(content=format_jd_regeneration_user_prompt(job_description, skills_text))
+            ]
+            
+            response = self.llm.invoke(messages)
+            regenerated_jd = response.content.strip()
+            
+            logger.info(f"Regenerated JD: {len(regenerated_jd)} characters")
+            
+            state["regenerated_jd"] = regenerated_jd
+            state["messages"].append(f"Regenerated JD with {len(enhanced_skills)} SFIA skills")
+            
+        except Exception as e:
+            logger.error(f"Error in regenerate_jd_node: {str(e)}")
+            state["error"] = f"JD regeneration error: {str(e)}"
+            state["regenerated_jd"] = job_description  # Fallback to original
+        
+        return state
+    
     def _get_level_name(self, level: int) -> str:
         """Get the SFIA level name"""
         level_names = {
@@ -385,7 +431,7 @@ class JobDescriptionEnhancer:
             job_description: Raw job description text
             
         Returns:
-            Dictionary containing enhanced skills and metadata
+            Dictionary containing enhanced skills, regenerated JD, and metadata
         """
         logger.info("Starting job description enhancement")
         logger.info(f"Knowledge Graph status: Connected")
@@ -396,6 +442,7 @@ class JobDescriptionEnhancer:
             "extracted_keywords": [],
             "sfia_skills": [],
             "enhanced_skills": [],
+            "regenerated_jd": "",
             "messages": [],
             "error": "",
             "kg_connected": self.kg_connected
@@ -411,6 +458,7 @@ class JobDescriptionEnhancer:
             "extracted_keywords": final_state.get("extracted_keywords", []),
             "skills_count": len(final_state.get("enhanced_skills", [])),
             "skills": final_state.get("enhanced_skills", []),
+            "regenerated_jd": final_state.get("regenerated_jd", ""),
             "workflow_messages": final_state.get("messages", []),
             "knowledge_graph_connected": final_state.get("kg_connected", True)
         }

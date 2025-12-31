@@ -290,14 +290,21 @@ def enhance_jd():
         enhancer = get_enhancer()
         enhancement_result = enhancer.enhance(job_description)
         
-        # Format enhanced JD output
+        # Get skills and regenerated JD
         skills = enhancement_result.get('skills', [])
-        skills_text = "\n".join([
-            f"- {s.get('name', s.get('code', 'Unknown'))} ({s.get('code', 'N/A')}) - Level {s.get('level', 'N/A')} ({s.get('level_name', '')})\n  {s.get('level_description', '')}" 
-            for s in skills
-        ])
+        regenerated_jd = enhancement_result.get('regenerated_jd', '')
         
-        enhanced_jd = f"""# Enhanced Job Description (SFIA-Based)
+        # Use regenerated JD if available, otherwise format manually
+        if regenerated_jd:
+            enhanced_jd = regenerated_jd
+        else:
+            # Fallback: Format enhanced JD output manually
+            skills_text = "\n".join([
+                f"- {s.get('name', s.get('code', 'Unknown'))} ({s.get('code', 'N/A')}) - Level {s.get('level', 'N/A')} ({s.get('level_name', '')})\n  {s.get('level_description', '')}" 
+                for s in skills
+            ])
+            
+            enhanced_jd = f"""# Enhanced Job Description (SFIA-Based)
 
 ## Original Job Description:
 {job_description}
@@ -322,6 +329,7 @@ def enhance_jd():
         return jsonify({
             'success': True,
             'enhanced_jd': enhanced_jd,
+            'regenerated_jd': regenerated_jd,
             'skills': skills,
             'skills_count': len(skills),
             'extracted_keywords': enhancement_result.get('extracted_keywords', []),
