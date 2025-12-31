@@ -9,6 +9,8 @@ import logging
 from datetime import datetime, timedelta
 from models import db, User
 from auth import token_required, get_current_user
+from services.sfia_km_service import get_sfia_service
+from services.enhance_jd_service import get_enhancer, reset_enhancer
 
 app = Flask(__name__)
 CORS(app, 
@@ -91,9 +93,9 @@ def register():
         
         logger.info(f"User registered successfully: {username}")
         
-        # Generate tokens
-        access_token = create_access_token(identity=user.id)
-        refresh_token = create_refresh_token(identity=user.id)
+        # Generate tokens (identity must be string)
+        access_token = create_access_token(identity=str(user.id))
+        refresh_token = create_refresh_token(identity=str(user.id))
         
         return jsonify({
             'success': True,
@@ -138,9 +140,9 @@ def login():
         user.last_login = datetime.utcnow()
         db.session.commit()
         
-        # Generate tokens
-        access_token = create_access_token(identity=user.id)
-        refresh_token = create_refresh_token(identity=user.id)
+        # Generate tokens (identity must be string)
+        access_token = create_access_token(identity=str(user.id))
+        refresh_token = create_refresh_token(identity=str(user.id))
         
         logger.info(f"User logged in successfully: {user.username}")
         
@@ -181,7 +183,7 @@ def get_me():
     logger.info("GET /api/auth/me - Profile request")
     try:
         current_user_id = get_jwt_identity()
-        user = User.query.get(current_user_id)
+        user = User.query.get(int(current_user_id))
         
         if not user:
             return jsonify({'error': 'User not found'}), 404
@@ -222,8 +224,41 @@ def health_check():
     logger.info("Health check endpoint accessed")
     return jsonify({
         'status': 'healthy',
-        'service': 'dechivo-backend'
+        'service': 'dechivo-backend',
+        'version': '2.1.0'
     })
+
+@app.route('/api/health/kg', methods=['GET'])
+def kg_health_check():
+    """Check Knowledge Graph connectivity and status"""
+    logger.info("GET /api/health/kg - Knowledge Graph health check")
+    try:
+        sfia_service = get_sfia_service()
+        
+        if sfia_service.is_connected():
+            stats = sfia_service.get_knowledge_graph_stats()
+            return jsonify({
+                'status': 'healthy',
+                'connected': True,
+                'fuseki_url': sfia_service.fuseki_url,
+                'dataset': sfia_service.dataset,
+                'stats': stats
+            }), 200
+        else:
+            return jsonify({
+                'status': 'unavailable',
+                'connected': False,
+                'message': 'Knowledge Graph not connected',
+                'fallback_mode': True
+            }), 503
+    
+    except Exception as e:
+        logger.error(f"KG health check error: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'connected': False,
+            'error': str(e)
+        }), 500
 
 # ============= PROTECTED ROUTES =============
 
@@ -232,11 +267,12 @@ def health_check():
 def enhance_jd():
     """
     Endpoint to enhance job descriptions using SFIA framework (Protected)
+    Uses Knowledge Graph for skill mapping when available
     """
     logger.info("POST /api/enhance-jd - Enhancement request received")
     try:
         current_user_id = get_jwt_identity()
-        user = User.query.get(current_user_id)
+        user = User.query.get(int(current_user_id))
         
         data = request.get_json()
         job_description = data.get('job_description', '')
@@ -250,27 +286,47 @@ def enhance_jd():
                 'error': 'Job description is required'
             }), 400
         
-        # TODO: Implement actual JD enhancement logic
-        # This is a placeholder response
-        enhanced_jd = f"""Enhanced JD (SFIA-Based):
+        # Use the real enhancement service with Knowledge Graph
+        enhancer = get_enhancer()
+        enhancement_result = enhancer.enhance(job_description)
+        
+        # Format enhanced JD output
+        skills = enhancement_result.get('skills', [])
+        skills_text = "\n".join([
+            f"- {s.get('name', s.get('code', 'Unknown'))} ({s.get('code', 'N/A')}) - Level {s.get('level', 'N/A')} ({s.get('level_name', '')})\n  {s.get('level_description', '')}" 
+            for s in skills
+        ])
+        
+        enhanced_jd = f"""# Enhanced Job Description (SFIA-Based)
 
+## Original Job Description:
 {job_description}
 
---- SFIA COMPETENCIES ---
+---
 
-Relevant Skills:
-- Software Development (Level 4)
-- System Design (Level 3)
-- Quality Assurance (Level 3)
+## SFIA Skills & Competencies Identified:
 
-Enhanced by: {user.username}
-Organization: {user.organization or 'N/A'}
+{skills_text if skills_text else "No specific SFIA skills identified."}
+
+---
+
+**Keywords Extracted:** {', '.join(enhancement_result.get('extracted_keywords', []))}
+
+**Knowledge Graph Status:** {'Connected ✓' if enhancement_result.get('knowledge_graph_connected') else 'Fallback Mode'}
+
+**Enhanced by:** {user.username}
+**Organization:** {user.organization or 'N/A'}
 """
         
-        logger.info(f"JD enhanced successfully. Output length: {len(enhanced_jd)} characters")
+        logger.info(f"JD enhanced successfully. Skills found: {len(skills)}")
         return jsonify({
             'success': True,
             'enhanced_jd': enhanced_jd,
+            'skills': skills,
+            'skills_count': len(skills),
+            'extracted_keywords': enhancement_result.get('extracted_keywords', []),
+            'knowledge_graph_connected': enhancement_result.get('knowledge_graph_connected', False),
+            'workflow_messages': enhancement_result.get('workflow_messages', []),
             'message': 'Job description enhanced successfully'
         })
     
@@ -289,7 +345,7 @@ def upload_jd():
     logger.info("POST /api/upload-jd - File upload request received")
     try:
         current_user_id = get_jwt_identity()
-        user = User.query.get(current_user_id)
+        user = User.query.get(int(current_user_id))
         
         if 'file' not in request.files:
             logger.warning("Upload failed: No file in request")

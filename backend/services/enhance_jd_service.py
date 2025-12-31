@@ -1,6 +1,7 @@
 """
 Job Description Enhancement Service using LangGraph
 Workflow: Extract Skills → Map to SFIA → Set Skill Levels
+Enhanced with Knowledge Graph integration
 """
 
 import os
@@ -28,20 +29,22 @@ class EnhancementState(TypedDict):
     enhanced_skills: List[Dict[str, Any]]
     messages: Annotated[List, add]
     error: str
+    kg_connected: bool
 
 
 class JobDescriptionEnhancer:
     """
     LangGraph-based service to enhance job descriptions with SFIA skills
+    Enhanced with Knowledge Graph integration
     """
     
-    def __init__(self, openai_api_key: str = None, fuseki_url: str = "http://localhost:3030"):
+    def __init__(self, openai_api_key: str = None, fuseki_url: str = None):
         """
         Initialize the Job Description Enhancer
         
         Args:
             openai_api_key: OpenAI API key (defaults to OPENAI_API_KEY env var)
-            fuseki_url: Fuseki server URL
+            fuseki_url: Fuseki server URL (defaults to FUSEKI_URL env var)
         """
         self.api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
         if not self.api_key:
@@ -56,6 +59,14 @@ class JobDescriptionEnhancer:
         
         # Initialize SFIA Knowledge Service
         self.sfia_service = get_sfia_service(fuseki_url=fuseki_url)
+        self.kg_connected = self.sfia_service.is_connected()
+        
+        if self.kg_connected:
+            logger.info("✅ Knowledge Graph integration enabled")
+            stats = self.sfia_service.get_knowledge_graph_stats()
+            logger.info(f"   📊 KG Stats: {stats.get('total_skills', 0)} skills, {stats.get('total_categories', 0)} categories")
+        else:
+            logger.warning("⚠️ Knowledge Graph not available - using fallback mode")
         
         # Build the graph
         self.graph = self._build_graph()
@@ -148,34 +159,45 @@ class JobDescriptionEnhancer:
             Updated state with mapped SFIA skills
         """
         logger.info("=== Node 2: Mapping to SFIA Skills ===")
+        logger.info(f"   KG Connected: {self.kg_connected}")
         
         keywords = state["extracted_keywords"]
         sfia_skills = []
+        seen_codes = set()
         
         try:
             for keyword in keywords:
-                # Search SFIA knowledge graph for matching skills
-                results = self.sfia_service.search_skills(keyword, limit=3)
-                
-                if results and results['results']['bindings']:
-                    for binding in results['results']['bindings']:
-                        skill = {
-                            'code': binding.get('code', {}).get('value', ''),
-                            'label': binding.get('label', {}).get('value', ''),
-                            'category': binding.get('category', {}).get('value', ''),
-                            'keyword_matched': keyword,
-                            'uri': binding.get('skill', {}).get('value', '')
-                        }
-                        
-                        # Avoid duplicates
-                        if not any(s['code'] == skill['code'] for s in sfia_skills):
+                if self.kg_connected:
+                    # Use Knowledge Graph for skill search
+                    results = self.sfia_service.search_skills(keyword, limit=3)
+                    
+                    for skill in results:
+                        code = skill.get('code', '')
+                        if code and code not in seen_codes:
+                            seen_codes.add(code)
+                            sfia_skills.append({
+                                'code': code,
+                                'label': skill.get('name', ''),
+                                'category': skill.get('category', ''),
+                                'description': skill.get('description', ''),
+                                'keyword_matched': keyword
+                            })
+                            logger.info(f"   ✓ Matched '{keyword}' → {code}: {skill.get('name', '')}")
+                else:
+                    # Fallback: Use mock SFIA data
+                    mock_skills = self._get_mock_sfia_skills(keyword)
+                    for skill in mock_skills:
+                        code = skill.get('code', '')
+                        if code and code not in seen_codes:
+                            seen_codes.add(code)
                             sfia_skills.append(skill)
-                            logger.info(f"Matched '{keyword}' → {skill['code']}: {skill['label']}")
+                            logger.info(f"   ✓ [Mock] Matched '{keyword}' → {code}")
             
             logger.info(f"Mapped to {len(sfia_skills)} SFIA skills")
             
             state["sfia_skills"] = sfia_skills
-            state["messages"].append(f"Mapped to {len(sfia_skills)} SFIA skills")
+            state["messages"].append(f"Mapped to {len(sfia_skills)} SFIA skills" + 
+                                    (" (via Knowledge Graph)" if self.kg_connected else " (fallback mode)"))
             
         except Exception as e:
             logger.error(f"Error in map_to_sfia_node: {str(e)}")
@@ -210,9 +232,6 @@ class JobDescriptionEnhancer:
             for skill in sfia_skills:
                 skill_code = skill['code']
                 
-                # Get detailed skill information including level descriptions
-                skill_details = self.sfia_service.get_skill_by_code(skill_code)
-                
                 # Determine appropriate level based on seniority
                 assigned_level = self._assign_level(
                     seniority_level,
@@ -220,26 +239,25 @@ class JobDescriptionEnhancer:
                     job_description
                 )
                 
-                # Get level-specific description
-                level_description = self._get_level_description(
-                    skill_details,
-                    assigned_level
-                )
+                # Get level-specific description from KG or fallback
+                level_description = self._get_level_description(skill_code, assigned_level)
                 
                 enhanced_skill = {
                     'code': skill['code'],
-                    'label': skill['label'],
-                    'category': skill['category'],
+                    'name': skill.get('label', skill.get('name', '')),
+                    'category': skill.get('category', ''),
                     'level': assigned_level,
+                    'level_name': self._get_level_name(assigned_level),
                     'level_description': level_description,
-                    'keyword_matched': skill['keyword_matched']
+                    'keyword_matched': skill.get('keyword_matched', '')
                 }
                 
                 enhanced_skills.append(enhanced_skill)
-                logger.info(f"Set {skill['code']} → Level {assigned_level}")
+                logger.info(f"   Set {skill['code']} → Level {assigned_level} ({self._get_level_name(assigned_level)})")
             
             state["enhanced_skills"] = enhanced_skills
             state["messages"].append(f"Assigned levels to {len(enhanced_skills)} skills")
+            state["kg_connected"] = self.kg_connected
             
         except Exception as e:
             logger.error(f"Error in set_skill_level_node: {str(e)}")
@@ -247,6 +265,19 @@ class JobDescriptionEnhancer:
             state["enhanced_skills"] = sfia_skills  # Fallback to skills without levels
         
         return state
+    
+    def _get_level_name(self, level: int) -> str:
+        """Get the SFIA level name"""
+        level_names = {
+            1: "Follow",
+            2: "Assist",
+            3: "Apply",
+            4: "Enable",
+            5: "Ensure/Advise",
+            6: "Initiate/Influence",
+            7: "Set Strategy/Inspire/Mobilise"
+        }
+        return level_names.get(level, f"Level {level}")
     
     def _fallback_keyword_extraction(self, text: str) -> List[str]:
         """
@@ -348,24 +379,84 @@ class JobDescriptionEnhancer:
         
         return base_level
     
-    def _get_level_description(self, skill_details: Dict, level: int) -> str:
+    def _get_level_description(self, skill_code: str, level: int) -> str:
         """
-        Extract level-specific description from skill details
+        Get level-specific description for a skill from Knowledge Graph
         """
-        if not skill_details or 'results' not in skill_details:
-            return f"Level {level} proficiency"
+        if self.kg_connected:
+            try:
+                levels = self.sfia_service.get_skill_levels_detail(skill_code)
+                if levels and level in levels:
+                    desc = levels[level].get('description', '')
+                    if desc:
+                        # Truncate if too long
+                        return desc[:300] + '...' if len(desc) > 300 else desc
+            except Exception as e:
+                logger.debug(f"Could not get level description: {e}")
         
-        bindings = skill_details['results']['bindings']
+        # Fallback descriptions
+        fallback_descriptions = {
+            1: "Follows instructions and guidance. Learns basic principles and techniques.",
+            2: "Assists with tasks under supervision. Developing practical experience.",
+            3: "Applies skills independently. Takes responsibility for own work outcomes.",
+            4: "Enables others. Provides guidance to less experienced colleagues.",
+            5: "Ensures quality and best practices. Advises on complex issues.",
+            6: "Initiates strategic decisions. Influences organizational direction.",
+            7: "Sets strategy. Inspires and mobilizes teams for enterprise-wide initiatives."
+        }
         
-        for binding in bindings:
-            level_number = binding.get('levelNumber', {}).get('value')
-            if level_number and int(level_number) == level:
-                description = binding.get('levelDescription', {}).get('value', '')
-                if description:
-                    # Truncate if too long
-                    return description[:200] + '...' if len(description) > 200 else description
+        return fallback_descriptions.get(level, f"Level {level} proficiency")
+    
+    def _get_mock_sfia_skills(self, keyword: str) -> List[Dict]:
+        """
+        Fallback: Return mock SFIA skills when KG is not available
+        """
+        # Mock SFIA skill mappings for common keywords
+        mock_mappings = {
+            'python': {'code': 'PROG', 'label': 'Programming/software development', 'category': 'Development and implementation'},
+            'java': {'code': 'PROG', 'label': 'Programming/software development', 'category': 'Development and implementation'},
+            'javascript': {'code': 'PROG', 'label': 'Programming/software development', 'category': 'Development and implementation'},
+            'database': {'code': 'DBDS', 'label': 'Database design', 'category': 'Development and implementation'},
+            'sql': {'code': 'DBDS', 'label': 'Database design', 'category': 'Development and implementation'},
+            'data analysis': {'code': 'DTAN', 'label': 'Data analysis', 'category': 'Data and analytics'},
+            'analytics': {'code': 'DTAN', 'label': 'Data analysis', 'category': 'Data and analytics'},
+            'machine learning': {'code': 'MLAI', 'label': 'Machine learning', 'category': 'Data and analytics'},
+            'ai': {'code': 'MLAI', 'label': 'Machine learning', 'category': 'Data and analytics'},
+            'cloud': {'code': 'CLDV', 'label': 'Solution development and implementation', 'category': 'Development and implementation'},
+            'aws': {'code': 'CLDV', 'label': 'Solution development and implementation', 'category': 'Development and implementation'},
+            'azure': {'code': 'CLDV', 'label': 'Solution development and implementation', 'category': 'Development and implementation'},
+            'devops': {'code': 'DLMG', 'label': 'Delivery management', 'category': 'Delivery and operation'},
+            'agile': {'code': 'DLMG', 'label': 'Delivery management', 'category': 'Delivery and operation'},
+            'project management': {'code': 'PRMG', 'label': 'Project management', 'category': 'Delivery and operation'},
+            'security': {'code': 'SCTY', 'label': 'Information security', 'category': 'Security and privacy'},
+            'cybersecurity': {'code': 'SCTY', 'label': 'Information security', 'category': 'Security and privacy'},
+            'testing': {'code': 'TEST', 'label': 'Testing', 'category': 'Development and implementation'},
+            'qa': {'code': 'TEST', 'label': 'Testing', 'category': 'Development and implementation'},
+            'leadership': {'code': 'LEAS', 'label': 'Leadership', 'category': 'People and skills'},
+            'management': {'code': 'PRMG', 'label': 'Project management', 'category': 'Delivery and operation'},
+            'api': {'code': 'DESN', 'label': 'Systems design', 'category': 'Development and implementation'},
+            'microservices': {'code': 'ARCH', 'label': 'Solution architecture', 'category': 'Strategy and architecture'},
+            'web development': {'code': 'PROG', 'label': 'Programming/software development', 'category': 'Development and implementation'},
+            'frontend': {'code': 'PROG', 'label': 'Programming/software development', 'category': 'Development and implementation'},
+            'backend': {'code': 'PROG', 'label': 'Programming/software development', 'category': 'Development and implementation'},
+        }
         
-        return f"Level {level} proficiency"
+        keyword_lower = keyword.lower()
+        
+        # Try exact match first
+        if keyword_lower in mock_mappings:
+            skill = mock_mappings[keyword_lower].copy()
+            skill['keyword_matched'] = keyword
+            return [skill]
+        
+        # Try partial matching
+        for key, skill in mock_mappings.items():
+            if key in keyword_lower or keyword_lower in key:
+                result = skill.copy()
+                result['keyword_matched'] = keyword
+                return [result]
+        
+        return []
     
     def enhance(self, job_description: str) -> Dict[str, Any]:
         """
@@ -378,6 +469,7 @@ class JobDescriptionEnhancer:
             Dictionary containing enhanced skills and metadata
         """
         logger.info("Starting job description enhancement")
+        logger.info(f"Knowledge Graph status: {'Connected' if self.kg_connected else 'Fallback mode'}")
         
         # Initialize state
         initial_state = {
@@ -386,7 +478,8 @@ class JobDescriptionEnhancer:
             "sfia_skills": [],
             "enhanced_skills": [],
             "messages": [],
-            "error": ""
+            "error": "",
+            "kg_connected": self.kg_connected
         }
         
         # Run the graph
@@ -399,7 +492,8 @@ class JobDescriptionEnhancer:
             "extracted_keywords": final_state.get("extracted_keywords", []),
             "skills_count": len(final_state.get("enhanced_skills", [])),
             "skills": final_state.get("enhanced_skills", []),
-            "workflow_messages": final_state.get("messages", [])
+            "workflow_messages": final_state.get("messages", []),
+            "knowledge_graph_connected": final_state.get("kg_connected", False)
         }
         
         logger.info(f"Enhancement complete: {result['skills_count']} skills identified")
@@ -407,8 +501,11 @@ class JobDescriptionEnhancer:
         return result
 
 
-# Convenience function
-def create_enhancer(openai_api_key: str = None, fuseki_url: str = "http://localhost:3030") -> JobDescriptionEnhancer:
+# Singleton enhancer instance
+_enhancer_instance = None
+
+
+def create_enhancer(openai_api_key: str = None, fuseki_url: str = None) -> JobDescriptionEnhancer:
     """
     Factory function to create a JobDescriptionEnhancer instance
     
@@ -420,3 +517,28 @@ def create_enhancer(openai_api_key: str = None, fuseki_url: str = "http://localh
         JobDescriptionEnhancer instance
     """
     return JobDescriptionEnhancer(openai_api_key=openai_api_key, fuseki_url=fuseki_url)
+
+
+def get_enhancer(openai_api_key: str = None, fuseki_url: str = None) -> JobDescriptionEnhancer:
+    """
+    Get or create a singleton JobDescriptionEnhancer instance
+    
+    Args:
+        openai_api_key: OpenAI API key
+        fuseki_url: Fuseki server URL
+        
+    Returns:
+        JobDescriptionEnhancer instance
+    """
+    global _enhancer_instance
+    
+    if _enhancer_instance is None:
+        _enhancer_instance = JobDescriptionEnhancer(openai_api_key=openai_api_key, fuseki_url=fuseki_url)
+    
+    return _enhancer_instance
+
+
+def reset_enhancer():
+    """Reset the singleton enhancer instance (useful for testing)"""
+    global _enhancer_instance
+    _enhancer_instance = None

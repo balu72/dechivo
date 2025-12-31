@@ -1,8 +1,10 @@
 """
 SFIA Knowledge Management Service
 Provides functions to query the SFIA knowledge graph using SPARQLWrapper
+Enhanced with environment configuration, connection validation, and correct SFIA ontology schema
 """
 
+import os
 from SPARQLWrapper import SPARQLWrapper, JSON
 import logging
 
@@ -14,28 +16,73 @@ logger = logging.getLogger(__name__)
 class SFIAKnowledgeService:
     """Service class for querying SFIA knowledge graph via SPARQL"""
     
-    def __init__(self, fuseki_url="http://localhost:3030", dataset="sfia"):
+    # Class-level cache for singleton pattern
+    _instance = None
+    _connection_validated = False
+    
+    def __init__(self, fuseki_url=None, dataset=None):
         """
         Initialize the SFIA Knowledge Service
         
         Args:
-            fuseki_url: Base URL of Fuseki server
-            dataset: Name of the dataset in Fuseki
+            fuseki_url: Base URL of Fuseki server (defaults to env var)
+            dataset: Name of the dataset in Fuseki (defaults to env var)
         """
-        self.endpoint = f"{fuseki_url}/{dataset}/query"
-        self.update_endpoint = f"{fuseki_url}/{dataset}/update"
+        # Read from environment variables with fallbacks
+        self.fuseki_url = fuseki_url or os.getenv('FUSEKI_URL', 'http://localhost:3030')
+        self.dataset = dataset or os.getenv('FUSEKI_DATASET', 'sfia')
+        self.timeout = int(os.getenv('KG_TIMEOUT', '10'))
+        self.enabled = os.getenv('KG_ENABLED', 'true').lower() == 'true'
         
-        # Common prefixes used in SFIA ontology
+        self.endpoint = f"{self.fuseki_url}/{self.dataset}/query"
+        self.update_endpoint = f"{self.fuseki_url}/{self.dataset}/update"
+        
+        # Common prefixes used in SFIA 9 ontology
+        # Note: SFIA 9 uses skos:notation for skill codes, not sfia:code
         self.prefixes = """
         PREFIX sfia: <https://rdf.sfia-online.org/9/ontology/>
+        PREFIX skills: <https://rdf.sfia-online.org/9/skills/>
+        PREFIX skilllevels: <https://rdf.sfia-online.org/9/skilllevels/>
+        PREFIX categories: <https://rdf.sfia-online.org/9/categories/>
+        PREFIX levels: <https://rdf.sfia-online.org/9/lor/>
         PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
         PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
         PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+        PREFIX owl: <http://www.w3.org/2002/07/owl#>
         """
+        
+        # Validate connection on first instantiation
+        if self.enabled and not SFIAKnowledgeService._connection_validated:
+            self._validate_connection()
+    
+    def _validate_connection(self):
+        """Test connection to Fuseki and log status"""
+        try:
+            test_query = "SELECT (1 as ?test) WHERE {}"
+            sparql = SPARQLWrapper(self.endpoint)
+            sparql.setTimeout(self.timeout)
+            sparql.setQuery(test_query)
+            sparql.setReturnFormat(JSON)
+            sparql.query().convert()
+            
+            SFIAKnowledgeService._connection_validated = True
+            logger.info(f"✅ Knowledge Graph connected: {self.endpoint}")
+            return True
+        except Exception as e:
+            logger.warning(f"⚠️ Knowledge Graph connection failed: {str(e)}")
+            logger.warning("Falling back to mock data mode")
+            self.enabled = False
+            return False
+    
+    def is_connected(self):
+        """Check if Knowledge Graph is connected and available"""
+        if not self.enabled:
+            return False
+        return SFIAKnowledgeService._connection_validated
     
     def _execute_query(self, query):
         """
-        Execute a SPARQL query
+        Execute a SPARQL query with error handling
         
         Args:
             query: SPARQL query string
@@ -43,15 +90,21 @@ class SFIAKnowledgeService:
         Returns:
             Query results as dictionary
         """
+        if not self.enabled:
+            logger.debug("KG disabled, returning empty results")
+            return {'results': {'bindings': []}}
+        
         try:
             sparql = SPARQLWrapper(self.endpoint)
+            sparql.setTimeout(self.timeout)
             sparql.setQuery(query)
             sparql.setReturnFormat(JSON)
             results = sparql.query().convert()
             return results
         except Exception as e:
             logger.error(f"SPARQL query error: {str(e)}")
-            raise
+            # Return empty results instead of raising to allow fallback
+            return {'results': {'bindings': []}}
     
     def get_all_skills(self, limit=None, offset=None):
         """
@@ -67,14 +120,17 @@ class SFIAKnowledgeService:
         query = f"""
         {self.prefixes}
         
-        SELECT ?skill ?code ?label ?category
+        SELECT ?skill ?code ?label ?description ?category
         WHERE {{
             ?skill a sfia:Skill ;
-                   sfia:code ?code ;
+                   skos:notation ?code ;
                    rdfs:label ?label .
             
-            OPTIONAL {{ ?skill sfia:hasCategory ?categoryUri .
-                       ?categoryUri rdfs:label ?category }}
+            OPTIONAL {{ ?skill sfia:description ?description }}
+            OPTIONAL {{ 
+                ?skill sfia:inCategory ?categoryUri .
+                ?categoryUri rdfs:label ?category 
+            }}
         }}
         ORDER BY ?label
         """
@@ -84,14 +140,34 @@ class SFIAKnowledgeService:
         if offset:
             query += f"\nOFFSET {offset}"
         
-        return self._execute_query(query)
+        result = self._execute_query(query)
+        return self._format_skills_list(result)
+    
+    def _format_skills_list(self, result):
+        """Format SPARQL result into a clean list of skills"""
+        skills = []
+        seen_codes = set()
+        
+        for binding in result.get('results', {}).get('bindings', []):
+            code = binding.get('code', {}).get('value', '')
+            if code and code not in seen_codes:
+                seen_codes.add(code)
+                skills.append({
+                    'code': code,
+                    'name': binding.get('label', {}).get('value', ''),
+                    'category': binding.get('category', {}).get('value', ''),
+                    'description': binding.get('description', {}).get('value', '')[:200] if binding.get('description', {}).get('value') else '',
+                    'uri': binding.get('skill', {}).get('value', '')
+                })
+        
+        return skills
     
     def get_skill_by_code(self, skill_code):
         """
         Get detailed information about a skill by its code
         
         Args:
-            skill_code: SFIA skill code (e.g., 'PROG', 'DAAN')
+            skill_code: SFIA skill code (e.g., 'PROG', 'DTAN')
             
         Returns:
             Detailed skill information including all levels
@@ -99,34 +175,60 @@ class SFIAKnowledgeService:
         query = f"""
         {self.prefixes}
         
-        SELECT ?skill ?code ?label ?description ?category ?subcategory ?url
-               ?level ?levelNumber ?levelDescription
+        SELECT ?skill ?code ?label ?description ?category ?url
+               ?levelNumber ?levelDescription
         WHERE {{
             ?skill a sfia:Skill ;
-                   sfia:code "{skill_code}" ;
+                   skos:notation "{skill_code}" ;
                    rdfs:label ?label .
+            
+            BIND("{skill_code}" as ?code)
             
             OPTIONAL {{ ?skill sfia:description ?description }}
             OPTIONAL {{ ?skill sfia:url ?url }}
             OPTIONAL {{ 
-                ?skill sfia:hasCategory ?categoryUri .
+                ?skill sfia:inCategory ?categoryUri .
                 ?categoryUri rdfs:label ?category 
-            }}
-            OPTIONAL {{ 
-                ?skill sfia:hasSubcategory ?subcategoryUri .
-                ?subcategoryUri rdfs:label ?subcategory 
             }}
             
             OPTIONAL {{
-                ?skill sfia:hasSkillLevel ?level .
-                ?level sfia:levelNumber ?levelNumber ;
-                       sfia:description ?levelDescription .
+                ?skill sfia:definedAtLevel ?skillLevel .
+                ?skillLevel sfia:atLevel ?levelUri .
+                ?levelUri sfia:levelNumber ?levelNumber .
+                ?skillLevel sfia:description ?levelDescription .
             }}
         }}
         ORDER BY ?levelNumber
         """
         
-        return self._execute_query(query)
+        result = self._execute_query(query)
+        return self._format_skill_detail(result, skill_code)
+    
+    def _format_skill_detail(self, result, skill_code):
+        """Format SPARQL result into a detailed skill object"""
+        bindings = result.get('results', {}).get('bindings', [])
+        
+        if not bindings:
+            return None
+        
+        first = bindings[0]
+        skill = {
+            'code': skill_code,
+            'name': first.get('label', {}).get('value', ''),
+            'description': first.get('description', {}).get('value', ''),
+            'category': first.get('category', {}).get('value', ''),
+            'url': first.get('url', {}).get('value', ''),
+            'levels': {}
+        }
+        
+        # Collect levels
+        for binding in bindings:
+            level_num = binding.get('levelNumber', {}).get('value')
+            level_desc = binding.get('levelDescription', {}).get('value')
+            if level_num and level_desc:
+                skill['levels'][int(level_num)] = level_desc
+        
+        return skill
     
     def search_skills(self, keyword, limit=50):
         """
@@ -139,32 +241,55 @@ class SFIAKnowledgeService:
         Returns:
             List of matching skills
         """
+        # Escape special characters in keyword
+        safe_keyword = keyword.replace('"', '\\"').replace('\\', '\\\\')
+        
         query = f"""
         {self.prefixes}
         
-        SELECT DISTINCT ?skill ?code ?label ?category
+        SELECT DISTINCT ?skill ?code ?label ?category ?description
         WHERE {{
             ?skill a sfia:Skill ;
-                   sfia:code ?code ;
+                   skos:notation ?code ;
                    rdfs:label ?label .
             
             OPTIONAL {{ 
-                ?skill sfia:hasCategory ?categoryUri .
+                ?skill sfia:inCategory ?categoryUri .
                 ?categoryUri rdfs:label ?category 
             }}
             OPTIONAL {{ ?skill sfia:description ?description }}
             
             FILTER (
-                regex(?label, "{keyword}", "i") ||
-                regex(?description, "{keyword}", "i") ||
-                regex(?category, "{keyword}", "i")
+                regex(?label, "{safe_keyword}", "i") ||
+                regex(?description, "{safe_keyword}", "i") ||
+                regex(?code, "{safe_keyword}", "i")
             )
         }}
         ORDER BY ?label
         LIMIT {limit}
         """
         
-        return self._execute_query(query)
+        result = self._execute_query(query)
+        return self._format_search_results(result)
+    
+    def _format_search_results(self, result):
+        """Format SPARQL result into search results"""
+        skills = []
+        seen_codes = set()
+        
+        for binding in result.get('results', {}).get('bindings', []):
+            code = binding.get('code', {}).get('value', '')
+            if code and code not in seen_codes:
+                seen_codes.add(code)
+                desc = binding.get('description', {}).get('value', '')
+                skills.append({
+                    'code': code,
+                    'name': binding.get('label', {}).get('value', ''),
+                    'category': binding.get('category', {}).get('value', ''),
+                    'description': desc[:200] + '...' if len(desc) > 200 else desc
+                })
+        
+        return skills
     
     def get_skills_by_category(self, category_name):
         """
@@ -179,24 +304,23 @@ class SFIAKnowledgeService:
         query = f"""
         {self.prefixes}
         
-        SELECT ?skill ?code ?label ?subcategory
+        SELECT ?skill ?code ?label ?description
         WHERE {{
             ?skill a sfia:Skill ;
-                   sfia:code ?code ;
+                   skos:notation ?code ;
                    rdfs:label ?label ;
-                   sfia:hasCategory ?categoryUri .
+                   sfia:inCategory ?categoryUri .
             
-            ?categoryUri rdfs:label "{category_name}" .
+            ?categoryUri rdfs:label ?categoryLabel .
+            FILTER (regex(?categoryLabel, "{category_name}", "i"))
             
-            OPTIONAL {{ 
-                ?skill sfia:hasSubcategory ?subcategoryUri .
-                ?subcategoryUri rdfs:label ?subcategory 
-            }}
+            OPTIONAL {{ ?skill sfia:description ?description }}
         }}
-        ORDER BY ?subcategory, ?label
+        ORDER BY ?label
         """
         
-        return self._execute_query(query)
+        result = self._execute_query(query)
+        return self._format_skills_list(result)
     
     def get_skills_by_level(self, level_number):
         """
@@ -214,21 +338,23 @@ class SFIAKnowledgeService:
         SELECT DISTINCT ?skill ?code ?label ?category
         WHERE {{
             ?skill a sfia:Skill ;
-                   sfia:code ?code ;
+                   skos:notation ?code ;
                    rdfs:label ?label ;
-                   sfia:hasSkillLevel ?skillLevel .
+                   sfia:definedAtLevel ?skillLevel .
             
-            ?skillLevel sfia:levelNumber {level_number} .
+            ?skillLevel sfia:atLevel ?levelUri .
+            ?levelUri sfia:levelNumber {level_number} .
             
             OPTIONAL {{ 
-                ?skill sfia:hasCategory ?categoryUri .
+                ?skill sfia:inCategory ?categoryUri .
                 ?categoryUri rdfs:label ?category 
             }}
         }}
-        ORDER BY ?category, ?label
+        ORDER BY ?category ?label
         """
         
-        return self._execute_query(query)
+        result = self._execute_query(query)
+        return self._format_skills_list(result)
     
     def get_all_categories(self):
         """
@@ -240,20 +366,30 @@ class SFIAKnowledgeService:
         query = f"""
         {self.prefixes}
         
-        SELECT DISTINCT ?category ?label (COUNT(?skill) as ?skillCount)
+        SELECT DISTINCT ?category ?label (COUNT(DISTINCT ?skill) as ?skillCount)
         WHERE {{
             ?category a sfia:Category ;
                      rdfs:label ?label .
             
             OPTIONAL {{
-                ?skill sfia:hasCategory ?category .
+                ?skill sfia:inCategory ?category .
             }}
         }}
         GROUP BY ?category ?label
         ORDER BY ?label
         """
         
-        return self._execute_query(query)
+        result = self._execute_query(query)
+        categories = []
+        
+        for binding in result.get('results', {}).get('bindings', []):
+            categories.append({
+                'name': binding.get('label', {}).get('value', ''),
+                'uri': binding.get('category', {}).get('value', ''),
+                'skill_count': int(binding.get('skillCount', {}).get('value', 0))
+            })
+        
+        return categories
     
     def get_all_levels(self):
         """
@@ -276,7 +412,17 @@ class SFIAKnowledgeService:
         ORDER BY ?levelNumber
         """
         
-        return self._execute_query(query)
+        result = self._execute_query(query)
+        levels = []
+        
+        for binding in result.get('results', {}).get('bindings', []):
+            levels.append({
+                'number': int(binding.get('levelNumber', {}).get('value', 0)),
+                'name': binding.get('label', {}).get('value', ''),
+                'description': binding.get('description', {}).get('value', '')
+            })
+        
+        return levels
     
     def get_skill_levels_detail(self, skill_code):
         """
@@ -291,25 +437,33 @@ class SFIAKnowledgeService:
         query = f"""
         {self.prefixes}
         
-        SELECT ?levelNumber ?description ?guidanceNotes
+        SELECT ?levelNumber ?description
         WHERE {{
             ?skill a sfia:Skill ;
-                   sfia:code "{skill_code}" ;
-                   sfia:hasSkillLevel ?skillLevel .
+                   skos:notation "{skill_code}" ;
+                   sfia:definedAtLevel ?skillLevel .
             
-            ?skillLevel sfia:levelNumber ?levelNumber ;
+            ?skillLevel sfia:atLevel ?levelUri ;
                        sfia:description ?description .
-            
-            OPTIONAL {{ ?skillLevel sfia:guidanceNotes ?guidanceNotes }}
+            ?levelUri sfia:levelNumber ?levelNumber .
         }}
         ORDER BY ?levelNumber
         """
         
-        return self._execute_query(query)
+        result = self._execute_query(query)
+        levels = {}
+        
+        for binding in result.get('results', {}).get('bindings', []):
+            level_num = int(binding.get('levelNumber', {}).get('value', 0))
+            levels[level_num] = {
+                'description': binding.get('description', {}).get('value', ''),
+            }
+        
+        return levels
     
     def get_related_skills(self, skill_code, limit=10):
         """
-        Get skills related to a given skill (same category or subcategory)
+        Get skills related to a given skill (same category)
         
         Args:
             skill_code: SFIA skill code
@@ -324,18 +478,13 @@ class SFIAKnowledgeService:
         SELECT DISTINCT ?relatedSkill ?code ?label
         WHERE {{
             ?skill a sfia:Skill ;
-                   sfia:code "{skill_code}" .
+                   skos:notation "{skill_code}" ;
+                   sfia:inCategory ?category .
             
-            {{
-                ?skill sfia:hasCategory ?category .
-                ?relatedSkill sfia:hasCategory ?category .
-            }} UNION {{
-                ?skill sfia:hasSubcategory ?subcategory .
-                ?relatedSkill sfia:hasSubcategory ?subcategory .
-            }}
-            
-            ?relatedSkill sfia:code ?code ;
-                         rdfs:label ?label .
+            ?relatedSkill a sfia:Skill ;
+                          sfia:inCategory ?category ;
+                          skos:notation ?code ;
+                          rdfs:label ?label .
             
             FILTER (?relatedSkill != ?skill)
         }}
@@ -343,39 +492,20 @@ class SFIAKnowledgeService:
         LIMIT {limit}
         """
         
-        return self._execute_query(query)
-    
-    def get_skills_by_subcategory(self, subcategory_name):
-        """
-        Get all skills in a specific subcategory
+        result = self._execute_query(query)
+        related = []
+        seen_codes = set()
         
-        Args:
-            subcategory_name: Name of the subcategory
-            
-        Returns:
-            List of skills in the subcategory
-        """
-        query = f"""
-        {self.prefixes}
+        for binding in result.get('results', {}).get('bindings', []):
+            code = binding.get('code', {}).get('value', '')
+            if code and code not in seen_codes:
+                seen_codes.add(code)
+                related.append({
+                    'code': code,
+                    'name': binding.get('label', {}).get('value', '')
+                })
         
-        SELECT ?skill ?code ?label ?category
-        WHERE {{
-            ?skill a sfia:Skill ;
-                   sfia:code ?code ;
-                   rdfs:label ?label ;
-                   sfia:hasSubcategory ?subcategoryUri .
-            
-            ?subcategoryUri rdfs:label "{subcategory_name}" .
-            
-            OPTIONAL {{ 
-                ?skill sfia:hasCategory ?categoryUri .
-                ?categoryUri rdfs:label ?category 
-            }}
-        }}
-        ORDER BY ?label
-        """
-        
-        return self._execute_query(query)
+        return related
     
     def get_knowledge_graph_stats(self):
         """
@@ -384,6 +514,16 @@ class SFIAKnowledgeService:
         Returns:
             Statistics including counts of skills, levels, categories, etc.
         """
+        if not self.enabled:
+            return {
+                'connected': False,
+                'total_triples': 0,
+                'total_skills': 0,
+                'total_categories': 0,
+                'total_levels': 0,
+                'total_skill_levels': 0
+            }
+        
         queries = {
             'total_triples': """
                 SELECT (COUNT(*) as ?count) WHERE { ?s ?p ?o }
@@ -406,7 +546,7 @@ class SFIAKnowledgeService:
             """
         }
         
-        stats = {}
+        stats = {'connected': True}
         for key, query in queries.items():
             try:
                 result = self._execute_query(query)
@@ -435,10 +575,14 @@ class SFIAKnowledgeService:
         return self._execute_query(sparql_query)
 
 
-# Convenience function to create service instance
-def get_sfia_service(fuseki_url="http://localhost:3030", dataset="sfia"):
+# Singleton instance holder
+_service_instance = None
+
+
+def get_sfia_service(fuseki_url=None, dataset=None):
     """
-    Factory function to create SFIA Knowledge Service instance
+    Factory function to create or return SFIA Knowledge Service instance
+    Uses singleton pattern to reuse validated connections
     
     Args:
         fuseki_url: Base URL of Fuseki server
@@ -447,4 +591,16 @@ def get_sfia_service(fuseki_url="http://localhost:3030", dataset="sfia"):
     Returns:
         SFIAKnowledgeService instance
     """
-    return SFIAKnowledgeService(fuseki_url, dataset)
+    global _service_instance
+    
+    if _service_instance is None:
+        _service_instance = SFIAKnowledgeService(fuseki_url, dataset)
+    
+    return _service_instance
+
+
+def reset_service():
+    """Reset the singleton instance (useful for testing)"""
+    global _service_instance
+    _service_instance = None
+    SFIAKnowledgeService._connection_validated = False
