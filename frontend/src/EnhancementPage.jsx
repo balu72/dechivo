@@ -14,7 +14,7 @@ const API_BASE_URL = 'http://localhost:5000';
 const EnhancementPage = () => {
     const location = useLocation();
     const navigate = useNavigate();
-    const { user, logout, getAccessToken } = useAuth();
+    const { user, logout, authenticatedFetch } = useAuth();
     const [originalJD, setOriginalJD] = useState('');
     const [enhancedJD, setEnhancedJD] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -38,12 +38,10 @@ const EnhancementPage = () => {
         setBackendMessage('Processing...');
 
         try {
-            const token = getAccessToken();
-            const response = await fetch(`${API_BASE_URL}/api/enhance-jd`, {
+            const response = await authenticatedFetch(`${API_BASE_URL}/api/enhance-jd`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
                 },
                 body: JSON.stringify({
                     job_description: content
@@ -60,8 +58,17 @@ const EnhancementPage = () => {
             }
         } catch (error) {
             console.error('Error enhancing JD:', error);
-            setStatusMessage({ type: 'error', text: error.message || 'Failed to connect to backend' });
-            setBackendMessage(`Error: ${error.message}`);
+            const errorMessage = error.message || 'Failed to connect to backend';
+            setStatusMessage({ type: 'error', text: errorMessage });
+            setBackendMessage(`Error: ${errorMessage}`);
+
+            // If session expired, redirect to login
+            if (errorMessage.includes('Session expired') || errorMessage.includes('Not authenticated')) {
+                setTimeout(() => {
+                    logout();
+                    navigate('/login');
+                }, 2000);
+            }
             setTimeout(() => setStatusMessage(null), 3000);
         } finally {
             setIsLoading(false);
@@ -141,12 +148,10 @@ const EnhancementPage = () => {
         setBackendMessage('Sending request to backend...');
 
         try {
-            const token = getAccessToken();
-            const response = await fetch(`${API_BASE_URL}/api/enhance-jd`, {
+            const response = await authenticatedFetch(`${API_BASE_URL}/api/enhance-jd`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
                 },
                 body: JSON.stringify({
                     job_description: enhancedJD
@@ -165,8 +170,17 @@ const EnhancementPage = () => {
             }
         } catch (error) {
             console.error('Error enhancing JD:', error);
-            setStatusMessage({ type: 'error', text: error.message || 'Failed to connect to backend' });
-            setBackendMessage(`Error: ${error.message}`);
+            const errorMessage = error.message || 'Failed to connect to backend';
+            setStatusMessage({ type: 'error', text: errorMessage });
+            setBackendMessage(`Error: ${errorMessage}`);
+
+            // If session expired, redirect to login
+            if (errorMessage.includes('Session expired') || errorMessage.includes('Not authenticated')) {
+                setTimeout(() => {
+                    logout();
+                    navigate('/login');
+                }, 2000);
+            }
             setTimeout(() => setStatusMessage(null), 3000);
         } finally {
             setIsLoading(false);
