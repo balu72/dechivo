@@ -241,8 +241,15 @@ class SFIAKnowledgeService:
         Returns:
             List of matching skills
         """
-        # Escape special characters in keyword
-        safe_keyword = keyword.replace('"', '\\"').replace('\\', '\\\\')
+        # Escape special characters in keyword for SPARQL regex
+        # Remove any characters that could break the query
+        import re as regex_module
+        # Keep only alphanumeric, spaces, and basic punctuation
+        safe_keyword = regex_module.sub(r'[^a-zA-Z0-9\s\-]', '', keyword)
+        safe_keyword = safe_keyword.strip()
+        
+        if not safe_keyword:
+            return []
         
         query = f"""
         {self.prefixes}

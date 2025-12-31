@@ -1,29 +1,16 @@
 """
 Job Description Enhancement Service using LangGraph
 Workflow: Extract Skills → Map to SFIA → Set Skill Levels
-Enhanced with Knowledge Graph integration and Ollama LLM
+Uses Ollama LLM and SFIA Knowledge Graph
 """
 
 import os
-import re
 from typing import TypedDict, List, Dict, Any, Annotated
 from operator import add
 
 from langgraph.graph import StateGraph, END
 from langchain_core.messages import HumanMessage, SystemMessage
-
-# Try to import Ollama, fall back to OpenAI if not available
-try:
-    from langchain_ollama import ChatOllama
-    OLLAMA_AVAILABLE = True
-except ImportError:
-    OLLAMA_AVAILABLE = False
-
-try:
-    from langchain_openai import ChatOpenAI
-    OPENAI_AVAILABLE = True
-except ImportError:
-    OPENAI_AVAILABLE = False
+from langchain_ollama import ChatOllama
 
 from .sfia_km_service import get_sfia_service
 
@@ -47,7 +34,7 @@ class EnhancementState(TypedDict):
 class JobDescriptionEnhancer:
     """
     LangGraph-based service to enhance job descriptions with SFIA skills
-    Enhanced with Knowledge Graph integration and Ollama LLM support
+    Uses Ollama LLM for keyword extraction and SFIA Knowledge Graph for skill mapping
     """
     
     def __init__(self, fuseki_url: str = None, ollama_model: str = None):
@@ -58,46 +45,23 @@ class JobDescriptionEnhancer:
             fuseki_url: Fuseki server URL (defaults to FUSEKI_URL env var)
             ollama_model: Ollama model to use (defaults to OLLAMA_MODEL env var or 'llama3:latest')
         """
-        self.llm = None
-        self.llm_provider = None
-        
         # Get Ollama configuration
         ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11434")
         ollama_model = ollama_model or os.getenv("OLLAMA_MODEL", "llama3:latest")
         
-        # Try Ollama first (local LLM)
-        if OLLAMA_AVAILABLE:
-            try:
-                self.llm = ChatOllama(
-                    model=ollama_model,
-                    base_url=ollama_url,
-                    temperature=0.3,
-                )
-                # Test connection
-                self.llm.invoke("test")
-                self.llm_provider = "Ollama"
-                logger.info(f"✅ Ollama LLM initialized: {ollama_model}")
-            except Exception as e:
-                logger.warning(f"⚠️ Ollama connection failed: {e}")
-                self.llm = None
-        
-        # Fall back to OpenAI if Ollama not available
-        if self.llm is None and OPENAI_AVAILABLE:
-            api_key = os.getenv("OPENAI_API_KEY")
-            if api_key:
-                try:
-                    self.llm = ChatOpenAI(
-                        model="gpt-4o-mini",
-                        temperature=0.3,
-                        api_key=api_key
-                    )
-                    self.llm_provider = "OpenAI"
-                    logger.info("✅ OpenAI LLM initialized")
-                except Exception as e:
-                    logger.warning(f"⚠️ OpenAI initialization failed: {e}")
-        
-        if self.llm is None:
-            logger.warning("⚠️ No LLM available - using fallback keyword extraction")
+        # Initialize Ollama LLM
+        try:
+            self.llm = ChatOllama(
+                model=ollama_model,
+                base_url=ollama_url,
+                temperature=0.3,
+            )
+            # Test connection
+            self.llm.invoke("test")
+            logger.info(f"✅ Ollama LLM initialized: {ollama_model}")
+        except Exception as e:
+            logger.error(f"❌ Ollama connection failed: {e}")
+            raise RuntimeError(f"Ollama LLM is required but not available: {e}")
         
         # Initialize SFIA Knowledge Service
         self.sfia_service = get_sfia_service(fuseki_url=fuseki_url)
@@ -108,8 +72,8 @@ class JobDescriptionEnhancer:
             stats = self.sfia_service.get_knowledge_graph_stats()
             logger.info(f"   📊 KG Stats: {stats.get('total_skills', 0)} skills, {stats.get('total_categories', 0)} categories")
         else:
-            logger.warning("⚠️ Knowledge Graph not available - using fallback mode")
-
+            logger.error("❌ Knowledge Graph not available")
+            raise RuntimeError("Knowledge Graph is required but not available")
         
         # Build the graph
         self.graph = self._build_graph()
@@ -138,7 +102,7 @@ class JobDescriptionEnhancer:
     
     def extract_skills_node(self, state: EnhancementState) -> EnhancementState:
         """
-        Node 1: Extract skills and keywords from job description using LLM
+        Node 1: Extract skills and keywords from job description using Ollama LLM
         
         Args:
             state: Current workflow state
@@ -151,33 +115,43 @@ class JobDescriptionEnhancer:
         job_description = state["job_description"]
         
         try:
-            if not self.llm:
-                # Fallback: Simple keyword extraction without LLM
-                logger.warning("LLM not available, using fallback keyword extraction")
-                keywords = self._fallback_keyword_extraction(job_description)
-            else:
-                # Use LLM to extract skills
-                system_prompt = """You are an expert at analyzing job descriptions and extracting technical skills, 
-                competencies, and required capabilities. Extract all relevant skills mentioned in the job description.
-                
-                Focus on:
-                - Technical skills (programming languages, tools, technologies)
-                - Professional competencies (project management, communication, leadership)
-                - Domain expertise (data analysis, software development, cybersecurity, etc.)
-                - Soft skills when explicitly mentioned
-                
-                Return ONLY a comma-separated list of skill keywords, no explanations."""
-                
-                messages = [
-                    SystemMessage(content=system_prompt),
-                    HumanMessage(content=f"Extract skills from this job description:\n\n{job_description}")
-                ]
-                
-                response = self.llm.invoke(messages)
-                keywords_text = response.content.strip()
-                
-                # Parse comma-separated keywords
-                keywords = [k.strip() for k in keywords_text.split(',') if k.strip()]
+            # Use Ollama LLM to extract skills
+            system_prompt = """You are an expert at analyzing job descriptions and extracting technical skills, 
+            competencies, and required capabilities. Extract all relevant skills mentioned in the job description.
+            
+            Focus on:
+            - Technical skills (programming languages, tools, technologies)
+            - Professional competencies (project management, communication, leadership)
+            - Domain expertise (data analysis, software development, cybersecurity, etc.)
+            - Soft skills when explicitly mentioned
+            
+            Return ONLY a comma-separated list of skill keywords, no explanations."""
+            
+            messages = [
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=f"Extract skills from this job description:\n\n{job_description}")
+            ]
+            
+            response = self.llm.invoke(messages)
+            keywords_text = response.content.strip()
+            
+            # Parse comma-separated keywords and clean them
+            raw_keywords = [k.strip() for k in keywords_text.split(',') if k.strip()]
+            
+            # Clean keywords - remove LLM artifacts and keep only valid skill names
+            import re
+            clean_keywords = []
+            for kw in raw_keywords:
+                # Remove any leading text like "Here are the skills:" etc.
+                if ':' in kw and len(kw.split(':')[0]) > len(kw.split(':')[1]):
+                    kw = kw.split(':')[-1].strip()
+                # Remove quotes
+                kw = kw.replace('"', '').replace("'", "").strip()
+                # Keep only reasonable length keywords (2-50 chars)
+                if 2 <= len(kw) <= 50:
+                    clean_keywords.append(kw)
+            
+            keywords = clean_keywords[:20]  # Limit to 20 keywords
             
             logger.info(f"Extracted {len(keywords)} keywords: {keywords}")
             
@@ -202,7 +176,6 @@ class JobDescriptionEnhancer:
             Updated state with mapped SFIA skills
         """
         logger.info("=== Node 2: Mapping to SFIA Skills ===")
-        logger.info(f"   KG Connected: {self.kg_connected}")
         
         keywords = state["extracted_keywords"]
         sfia_skills = []
@@ -210,37 +183,26 @@ class JobDescriptionEnhancer:
         
         try:
             for keyword in keywords:
-                if self.kg_connected:
-                    # Use Knowledge Graph for skill search
-                    results = self.sfia_service.search_skills(keyword, limit=3)
-                    
-                    for skill in results:
-                        code = skill.get('code', '')
-                        if code and code not in seen_codes:
-                            seen_codes.add(code)
-                            sfia_skills.append({
-                                'code': code,
-                                'label': skill.get('name', ''),
-                                'category': skill.get('category', ''),
-                                'description': skill.get('description', ''),
-                                'keyword_matched': keyword
-                            })
-                            logger.info(f"   ✓ Matched '{keyword}' → {code}: {skill.get('name', '')}")
-                else:
-                    # Fallback: Use mock SFIA data
-                    mock_skills = self._get_mock_sfia_skills(keyword)
-                    for skill in mock_skills:
-                        code = skill.get('code', '')
-                        if code and code not in seen_codes:
-                            seen_codes.add(code)
-                            sfia_skills.append(skill)
-                            logger.info(f"   ✓ [Mock] Matched '{keyword}' → {code}")
+                # Use Knowledge Graph for skill search
+                results = self.sfia_service.search_skills(keyword, limit=3)
+                
+                for skill in results:
+                    code = skill.get('code', '')
+                    if code and code not in seen_codes:
+                        seen_codes.add(code)
+                        sfia_skills.append({
+                            'code': code,
+                            'label': skill.get('name', ''),
+                            'category': skill.get('category', ''),
+                            'description': skill.get('description', ''),
+                            'keyword_matched': keyword
+                        })
+                        logger.info(f"   ✓ Matched '{keyword}' → {code}: {skill.get('name', '')}")
             
             logger.info(f"Mapped to {len(sfia_skills)} SFIA skills")
             
             state["sfia_skills"] = sfia_skills
-            state["messages"].append(f"Mapped to {len(sfia_skills)} SFIA skills" + 
-                                    (" (via Knowledge Graph)" if self.kg_connected else " (fallback mode)"))
+            state["messages"].append(f"Mapped to {len(sfia_skills)} SFIA skills via Knowledge Graph")
             
         except Exception as e:
             logger.error(f"Error in map_to_sfia_node: {str(e)}")
@@ -267,8 +229,7 @@ class JobDescriptionEnhancer:
         
         try:
             # Detect seniority indicators in job description
-            jd_lower = job_description.lower()
-            seniority_level = self._detect_seniority(jd_lower)
+            seniority_level = self._detect_seniority(job_description.lower())
             
             logger.info(f"Detected seniority level: {seniority_level}")
             
@@ -282,7 +243,7 @@ class JobDescriptionEnhancer:
                     job_description
                 )
                 
-                # Get level-specific description from KG or fallback
+                # Get level-specific description from Knowledge Graph
                 level_description = self._get_level_description(skill_code, assigned_level)
                 
                 enhanced_skill = {
@@ -305,7 +266,7 @@ class JobDescriptionEnhancer:
         except Exception as e:
             logger.error(f"Error in set_skill_level_node: {str(e)}")
             state["error"] = f"Level assignment error: {str(e)}"
-            state["enhanced_skills"] = sfia_skills  # Fallback to skills without levels
+            state["enhanced_skills"] = []
         
         return state
     
@@ -322,91 +283,6 @@ class JobDescriptionEnhancer:
         }
         return level_names.get(level, f"Level {level}")
     
-    def _fallback_keyword_extraction(self, text: str) -> List[str]:
-        """
-        Fallback method for keyword extraction without LLM
-        Uses simple pattern matching and common skill keywords
-        """
-        keywords = []
-        text_lower = text.lower()
-        
-        # Common technical and professional skill keywords (direct match)
-        skill_patterns = [
-            # Programming languages
-            r'\b(python|java|javascript|typescript|c\+\+|ruby|go|rust|php|swift|kotlin|scala|perl)\b',
-            # Data & AI
-            r'\b(data\s*analysis|machine\s*learning|ai|analytics|data\s*science|deep\s*learning)\b',
-            # Methodologies
-            r'\b(project\s*management|agile|scrum|devops|kanban|waterfall)\b',
-            # Cloud & Infrastructure
-            r'\b(cloud|aws|azure|gcp|docker|kubernetes|terraform|ansible)\b',
-            # Database
-            r'\b(database|sql|nosql|mongodb|postgresql|mysql|redis|elasticsearch)\b',
-            # Web Development
-            r'\b(web\s*development|frontend|backend|fullstack|react|angular|vue|node\.?js)\b',
-            # Testing & QA
-            r'\b(testing|qa|quality\s*assurance|automation|selenium|cypress)\b',
-            # Security
-            r'\b(security|cybersecurity|infosec|penetration\s*testing)\b',
-            # Soft Skills
-            r'\b(leadership|management|communication|teamwork|collaboration)\b',
-            # Architecture
-            r'\b(api|rest|graphql|microservices|architecture|design\s*patterns)\b',
-            # General IT
-            r'\b(software|development|engineering|programming|coding)\b',
-            r'\b(systems?|network|infrastructure|operations)\b',
-            r'\b(business\s*analysis|requirements|stakeholder)\b',
-        ]
-        
-        for pattern in skill_patterns:
-            matches = re.findall(pattern, text_lower, re.IGNORECASE)
-            keywords.extend(matches)
-        
-        # Role-based keywords (extract from job titles)
-        role_patterns = [
-            (r'\b(software\s*engineer)', 'software development'),
-            (r'\b(data\s*engineer)', 'data engineering'),
-            (r'\b(data\s*scientist)', 'data science'),
-            (r'\b(data\s*analyst)', 'data analytics'),
-            (r'\b(devops\s*engineer)', 'devops'),
-            (r'\b(cloud\s*engineer)', 'cloud'),
-            (r'\b(security\s*engineer|security\s*analyst)', 'security'),
-            (r'\b(qa\s*engineer|test\s*engineer)', 'testing'),
-            (r'\b(frontend\s*developer|front-end)', 'frontend'),
-            (r'\b(backend\s*developer|back-end)', 'backend'),
-            (r'\b(full\s*stack)', 'fullstack'),
-            (r'\b(machine\s*learning\s*engineer|ml\s*engineer)', 'machine learning'),
-            (r'\b(project\s*manager|program\s*manager)', 'project management'),
-            (r'\b(product\s*manager)', 'business analysis'),
-            (r'\b(scrum\s*master)', 'agile'),
-            (r'\b(solutions?\s*architect)', 'architecture'),
-            (r'\b(tech\s*lead|technical\s*lead)', 'leadership'),
-            (r'\b(system\s*administrator|sysadmin)', 'systems administration'),
-            (r'\b(network\s*engineer)', 'network'),
-            (r'\b(database\s*administrator|dba)', 'database'),
-        ]
-        
-        for pattern, mapped_keyword in role_patterns:
-            if re.search(pattern, text_lower, re.IGNORECASE):
-                keywords.append(mapped_keyword)
-        
-        # If still no keywords, try to extract any meaningful words
-        if not keywords:
-            # Extract any capitalized words that might be skills or technologies
-            capitalized = re.findall(r'\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b', text)
-            for cap in capitalized:
-                cap_lower = cap.lower()
-                # Skip common non-skill words
-                if cap_lower not in ['title', 'role', 'position', 'job', 'description', 'company', 'the', 'and', 'for', 'with']:
-                    keywords.append(cap_lower)
-        
-        # Remove duplicates and clean up
-        keywords = list(set(k.strip() for k in keywords if k.strip()))
-        
-        logger.info(f"Fallback extraction found keywords: {keywords}")
-        
-        return keywords[:20]  # Limit to top 20
-    
     def _detect_seniority(self, text: str) -> str:
         """
         Detect seniority level from job description text
@@ -421,12 +297,10 @@ class JobDescriptionEnhancer:
         lead_indicators = ['lead', 'architect', 'manager', 'head', 'director', 'principal']
         
         # Count matches
-        text_lower = text.lower()
-        
-        lead_count = sum(1 for indicator in lead_indicators if indicator in text_lower)
-        senior_count = sum(1 for indicator in senior_indicators if indicator in text_lower)
-        mid_count = sum(1 for indicator in mid_indicators if indicator in text_lower)
-        junior_count = sum(1 for indicator in junior_indicators if indicator in text_lower)
+        lead_count = sum(1 for indicator in lead_indicators if indicator in text)
+        senior_count = sum(1 for indicator in senior_indicators if indicator in text)
+        mid_count = sum(1 for indicator in mid_indicators if indicator in text)
+        junior_count = sum(1 for indicator in junior_indicators if indicator in text)
         
         # Determine seniority based on counts
         if lead_count > 0:
@@ -480,19 +354,18 @@ class JobDescriptionEnhancer:
         """
         Get level-specific description for a skill from Knowledge Graph
         """
-        if self.kg_connected:
-            try:
-                levels = self.sfia_service.get_skill_levels_detail(skill_code)
-                if levels and level in levels:
-                    desc = levels[level].get('description', '')
-                    if desc:
-                        # Truncate if too long
-                        return desc[:300] + '...' if len(desc) > 300 else desc
-            except Exception as e:
-                logger.debug(f"Could not get level description: {e}")
+        try:
+            levels = self.sfia_service.get_skill_levels_detail(skill_code)
+            if levels and level in levels:
+                desc = levels[level].get('description', '')
+                if desc:
+                    # Truncate if too long
+                    return desc[:300] + '...' if len(desc) > 300 else desc
+        except Exception as e:
+            logger.debug(f"Could not get level description: {e}")
         
-        # Fallback descriptions
-        fallback_descriptions = {
+        # Standard SFIA level descriptions
+        level_descriptions = {
             1: "Follows instructions and guidance. Learns basic principles and techniques.",
             2: "Assists with tasks under supervision. Developing practical experience.",
             3: "Applies skills independently. Takes responsibility for own work outcomes.",
@@ -502,58 +375,7 @@ class JobDescriptionEnhancer:
             7: "Sets strategy. Inspires and mobilizes teams for enterprise-wide initiatives."
         }
         
-        return fallback_descriptions.get(level, f"Level {level} proficiency")
-    
-    def _get_mock_sfia_skills(self, keyword: str) -> List[Dict]:
-        """
-        Fallback: Return mock SFIA skills when KG is not available
-        """
-        # Mock SFIA skill mappings for common keywords
-        mock_mappings = {
-            'python': {'code': 'PROG', 'label': 'Programming/software development', 'category': 'Development and implementation'},
-            'java': {'code': 'PROG', 'label': 'Programming/software development', 'category': 'Development and implementation'},
-            'javascript': {'code': 'PROG', 'label': 'Programming/software development', 'category': 'Development and implementation'},
-            'database': {'code': 'DBDS', 'label': 'Database design', 'category': 'Development and implementation'},
-            'sql': {'code': 'DBDS', 'label': 'Database design', 'category': 'Development and implementation'},
-            'data analysis': {'code': 'DTAN', 'label': 'Data analysis', 'category': 'Data and analytics'},
-            'analytics': {'code': 'DTAN', 'label': 'Data analysis', 'category': 'Data and analytics'},
-            'machine learning': {'code': 'MLAI', 'label': 'Machine learning', 'category': 'Data and analytics'},
-            'ai': {'code': 'MLAI', 'label': 'Machine learning', 'category': 'Data and analytics'},
-            'cloud': {'code': 'CLDV', 'label': 'Solution development and implementation', 'category': 'Development and implementation'},
-            'aws': {'code': 'CLDV', 'label': 'Solution development and implementation', 'category': 'Development and implementation'},
-            'azure': {'code': 'CLDV', 'label': 'Solution development and implementation', 'category': 'Development and implementation'},
-            'devops': {'code': 'DLMG', 'label': 'Delivery management', 'category': 'Delivery and operation'},
-            'agile': {'code': 'DLMG', 'label': 'Delivery management', 'category': 'Delivery and operation'},
-            'project management': {'code': 'PRMG', 'label': 'Project management', 'category': 'Delivery and operation'},
-            'security': {'code': 'SCTY', 'label': 'Information security', 'category': 'Security and privacy'},
-            'cybersecurity': {'code': 'SCTY', 'label': 'Information security', 'category': 'Security and privacy'},
-            'testing': {'code': 'TEST', 'label': 'Testing', 'category': 'Development and implementation'},
-            'qa': {'code': 'TEST', 'label': 'Testing', 'category': 'Development and implementation'},
-            'leadership': {'code': 'LEAS', 'label': 'Leadership', 'category': 'People and skills'},
-            'management': {'code': 'PRMG', 'label': 'Project management', 'category': 'Delivery and operation'},
-            'api': {'code': 'DESN', 'label': 'Systems design', 'category': 'Development and implementation'},
-            'microservices': {'code': 'ARCH', 'label': 'Solution architecture', 'category': 'Strategy and architecture'},
-            'web development': {'code': 'PROG', 'label': 'Programming/software development', 'category': 'Development and implementation'},
-            'frontend': {'code': 'PROG', 'label': 'Programming/software development', 'category': 'Development and implementation'},
-            'backend': {'code': 'PROG', 'label': 'Programming/software development', 'category': 'Development and implementation'},
-        }
-        
-        keyword_lower = keyword.lower()
-        
-        # Try exact match first
-        if keyword_lower in mock_mappings:
-            skill = mock_mappings[keyword_lower].copy()
-            skill['keyword_matched'] = keyword
-            return [skill]
-        
-        # Try partial matching
-        for key, skill in mock_mappings.items():
-            if key in keyword_lower or keyword_lower in key:
-                result = skill.copy()
-                result['keyword_matched'] = keyword
-                return [result]
-        
-        return []
+        return level_descriptions.get(level, f"Level {level} proficiency")
     
     def enhance(self, job_description: str) -> Dict[str, Any]:
         """
@@ -566,7 +388,7 @@ class JobDescriptionEnhancer:
             Dictionary containing enhanced skills and metadata
         """
         logger.info("Starting job description enhancement")
-        logger.info(f"Knowledge Graph status: {'Connected' if self.kg_connected else 'Fallback mode'}")
+        logger.info(f"Knowledge Graph status: Connected")
         
         # Initialize state
         initial_state = {
@@ -590,7 +412,7 @@ class JobDescriptionEnhancer:
             "skills_count": len(final_state.get("enhanced_skills", [])),
             "skills": final_state.get("enhanced_skills", []),
             "workflow_messages": final_state.get("messages", []),
-            "knowledge_graph_connected": final_state.get("kg_connected", False)
+            "knowledge_graph_connected": final_state.get("kg_connected", True)
         }
         
         logger.info(f"Enhancement complete: {result['skills_count']} skills identified")
@@ -639,4 +461,3 @@ def reset_enhancer():
     """Reset the singleton enhancer instance (useful for testing)"""
     global _enhancer_instance
     _enhancer_instance = None
-
