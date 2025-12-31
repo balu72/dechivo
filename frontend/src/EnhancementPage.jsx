@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from './AuthContext';
 import mammoth from 'mammoth';
 import * as pdfjsLib from 'pdfjs-dist';
 import './EnhancementPage.css';
@@ -12,11 +13,14 @@ const API_BASE_URL = 'http://localhost:5000';
 
 const EnhancementPage = () => {
     const location = useLocation();
+    const navigate = useNavigate();
+    const { user, logout, getAccessToken } = useAuth();
     const [originalJD, setOriginalJD] = useState('');
     const [enhancedJD, setEnhancedJD] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [statusMessage, setStatusMessage] = useState(null);
     const [backendMessage, setBackendMessage] = useState('Ready to enhance job descriptions...');
+    const [showUserMenu, setShowUserMenu] = useState(false);
 
     // Auto-enhance when content is passed from landing page
     useEffect(() => {
@@ -34,10 +38,12 @@ const EnhancementPage = () => {
         setBackendMessage('Processing...');
 
         try {
+            const token = getAccessToken();
             const response = await fetch(`${API_BASE_URL}/api/enhance-jd`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
                 },
                 body: JSON.stringify({
                     job_description: content
@@ -87,14 +93,14 @@ const EnhancementPage = () => {
                 const arrayBuffer = await file.arrayBuffer();
                 const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
                 const textPromises = [];
-                
+
                 for (let i = 1; i <= pdf.numPages; i++) {
                     const page = await pdf.getPage(i);
                     const content = await page.getTextContent();
                     const text = content.items.map(item => item.str).join(' ');
                     textPromises.push(text);
                 }
-                
+
                 textContent = textPromises.join('\n\n');
             } else if (fileExtension === 'docx' || fileExtension === 'doc') {
                 // Handle DOCX/DOC files
@@ -135,10 +141,12 @@ const EnhancementPage = () => {
         setBackendMessage('Sending request to backend...');
 
         try {
+            const token = getAccessToken();
             const response = await fetch(`${API_BASE_URL}/api/enhance-jd`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
                 },
                 body: JSON.stringify({
                     job_description: enhancedJD
@@ -196,16 +204,54 @@ const EnhancementPage = () => {
                     <nav className="nav">
                         <ul className="nav-links">
                             <li>
-                                <a href="/" className="nav-link">Home</a>
+                                <Link to="/" className="nav-link">Home</Link>
                             </li>
                             <li>
-                                <a href="#about" className="nav-link">About</a>
-                            </li>
-                            <li>
-                                <a href="#contact" className="nav-link">Contact</a>
+                                <Link to="/enhance" className="nav-link">Enhance</Link>
                             </li>
                         </ul>
                     </nav>
+                    {/* User Menu */}
+                    <div className="user-menu-container">
+                        <button
+                            className="user-menu-button"
+                            onClick={() => setShowUserMenu(!showUserMenu)}
+                        >
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                <path d="M10 10C12.21 10 14 8.21 14 6C14 3.79 12.21 2 10 2C7.79 2 6 3.79 6 6C6 8.21 7.79 10 10 10ZM10 12C7.33 12 2 13.34 2 16V18H18V16C18 13.34 12.67 12 10 12Z" fill="currentColor" />
+                            </svg>
+                            <span>{user?.username || 'User'}</span>
+                            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                                <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                        </button>
+                        {showUserMenu && (
+                            <div className="user-dropdown">
+                                <div className="user-info">
+                                    <div className="user-avatar">
+                                        {user?.username?.charAt(0).toUpperCase() || 'U'}
+                                    </div>
+                                    <div className="user-details">
+                                        <div className="user-name">{user?.full_name || user?.username}</div>
+                                        <div className="user-email">{user?.email}</div>
+                                    </div>
+                                </div>
+                                <div className="dropdown-divider"></div>
+                                <button
+                                    className="dropdown-item logout-button"
+                                    onClick={async () => {
+                                        await logout();
+                                        navigate('/login');
+                                    }}
+                                >
+                                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                        <path d="M6 14H3.33333C2.97971 14 2.64057 13.8595 2.39052 13.6095C2.14048 13.3594 2 13.0203 2 12.6667V3.33333C2 2.97971 2.14048 2.64057 2.39052 2.39052C2.64057 2.14048 2.97971 2 3.33333 2H6M10.6667 11.3333L14 8M14 8L10.6667 4.66667M14 8H6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                    Logout
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </header>
 
@@ -215,7 +261,7 @@ const EnhancementPage = () => {
                 <div className="back-navigation">
                     <Link to="/" className="back-link">
                         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                         Back
                     </Link>

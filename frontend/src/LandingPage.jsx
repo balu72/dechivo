@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from './AuthContext';
 import mammoth from 'mammoth';
 import * as pdfjsLib from 'pdfjs-dist';
 import './LandingPage.css';
@@ -9,6 +10,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLi
 
 const LandingPage = () => {
     const navigate = useNavigate();
+    const { isAuthenticated } = useAuth();
     const [scrolled, setScrolled] = useState(false);
     const [selectedFile, setSelectedFile] = useState(null);
     const [fileContent, setFileContent] = useState('');
@@ -53,14 +55,14 @@ const LandingPage = () => {
                 const arrayBuffer = await file.arrayBuffer();
                 const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
                 const textPromises = [];
-                
+
                 for (let i = 1; i <= pdf.numPages; i++) {
                     const page = await pdf.getPage(i);
                     const content = await page.getTextContent();
                     const text = content.items.map(item => item.str).join(' ');
                     textPromises.push(text);
                 }
-                
+
                 textContent = textPromises.join('\n\n');
             } else if (fileExtension === 'docx' || fileExtension === 'doc') {
                 const arrayBuffer = await file.arrayBuffer();
@@ -81,6 +83,12 @@ const LandingPage = () => {
     };
 
     const handleEnhanceClick = () => {
+        // Redirect to login if not authenticated
+        if (!isAuthenticated) {
+            navigate('/login');
+            return;
+        }
+
         if (selectedFile && fileContent) {
             // Navigate with file content
             navigate('/enhance', { state: { fileContent, fileName: selectedFile.name } });
@@ -114,6 +122,15 @@ const LandingPage = () => {
                             </li>
                         </ul>
                     </nav>
+                    {!isAuthenticated && (
+                        <div className="auth-buttons">
+                            <Link to="/login" className="btn btn-ghost">Login</Link>
+                            <Link to="/register" className="btn btn-primary">Sign Up</Link>
+                        </div>
+                    )}
+                    {isAuthenticated && (
+                        <Link to="/enhance" className="btn btn-primary">Dashboard</Link>
+                    )}
                 </div>
             </header>
 
@@ -138,8 +155,8 @@ const LandingPage = () => {
                             <button className="btn btn-primary btn-large" onClick={triggerFileInput}>
                                 {selectedFile ? `File: ${selectedFile.name}` : 'Load JD File'}
                             </button>
-                            <button 
-                                className="btn btn-secondary btn-large" 
+                            <button
+                                className="btn btn-secondary btn-large"
                                 onClick={handleEnhanceClick}
                                 disabled={!selectedFile}
                                 style={{ opacity: selectedFile ? 1 : 0.5 }}
