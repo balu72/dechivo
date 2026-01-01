@@ -1,0 +1,89 @@
+name: Deploy to VPSDime
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+
+      - name: Add VPS to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to VPS
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          # Create deployment package
+          tar -czf deploy.tar.gz \
+            --exclude='frontend/node_modules' \
+            --exclude='backend/venv' \
+            --exclude='backend/__pycache__' \
+            --exclude='.git' \
+            --exclude='*.pyc' \
+            .
+
+          # Copy to server
+          scp deploy.tar.gz ${VPS_USER}@${VPS_HOST}:/tmp/
+
+          # Deploy on server
+          ssh ${VPS_USER}@${VPS_HOST} << 'ENDSSH'
+            set -e
+            
+            echo "📦 Extracting deployment package..."
+            cd /opt/dechivo
+            sudo tar -xzf /tmp/deploy.tar.gz --strip-components=0
+            rm /tmp/deploy.tar.gz
+            
+            echo "🐍 Updating backend dependencies..."
+            cd /opt/dechivo/backend
+            source venv/bin/activate
+            pip install -r requirements.txt --quiet
+            deactivate
+            
+            echo "⚛️ Deploying frontend..."
+            sudo cp -r /opt/dechivo/frontend/dist/* /var/www/dechivo/
+            sudo chown -R www-data:www-data /var/www/dechivo
+            
+            echo "🔄 Restarting backend service..."
+            sudo systemctl restart dechivo-backend
+            
+            echo "✅ Deployment complete!"
+          ENDSSH
+
+      - name: Verify deployment
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          sleep 5
+          curl -f http://${VPS_HOST}/api/health || echo "Health check failed"
