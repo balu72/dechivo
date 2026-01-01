@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 
 const AuthContext = createContext(null);
 
-const API_BASE_URL = 'http://localhost:5000';
+const API_BASE_URL = '';  // Use relative URL for both dev and production
 
 export const useAuth = () => {
     const context = useContext(AuthContext);

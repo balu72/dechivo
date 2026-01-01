@@ -1,7 +1,7 @@
 """
 Job Description Enhancement Service using LangGraph
 Workflow: Extract Skills → Map to SFIA → Set Skill Levels
-Uses Ollama LLM and SFIA Knowledge Graph
+Uses OpenAI (primary) or Ollama (fallback) LLM and SFIA Knowledge Graph
 """
 
 import os
@@ -10,7 +10,19 @@ from operator import add
 
 from langgraph.graph import StateGraph, END
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_ollama import ChatOllama
+
+# Import both LLM providers
+try:
+    from langchain_openai import ChatOpenAI
+    OPENAI_AVAILABLE = True
+except ImportError:
+    OPENAI_AVAILABLE = False
+
+try:
+    from langchain_ollama import ChatOllama
+    OLLAMA_AVAILABLE = True
+except ImportError:
+    OLLAMA_AVAILABLE = False
 
 from .sfia_km_service import get_sfia_service
 from prompts.enhance_jd_prompts import (
@@ -41,34 +53,67 @@ class EnhancementState(TypedDict):
 class JobDescriptionEnhancer:
     """
     LangGraph-based service to enhance job descriptions with SFIA skills
-    Uses Ollama LLM for keyword extraction and SFIA Knowledge Graph for skill mapping
+    Uses OpenAI (primary) or Ollama (fallback) LLM and SFIA Knowledge Graph for skill mapping
     """
     
-    def __init__(self, fuseki_url: str = None, ollama_model: str = None):
+    def __init__(self, fuseki_url: str = None, ollama_model: str = None, openai_model: str = None):
         """
         Initialize the Job Description Enhancer
         
         Args:
             fuseki_url: Fuseki server URL (defaults to FUSEKI_URL env var)
             ollama_model: Ollama model to use (defaults to OLLAMA_MODEL env var or 'llama3:latest')
+            openai_model: OpenAI model to use (defaults to OPENAI_MODEL env var or 'gpt-4o-mini')
         """
-        # Get Ollama configuration
-        ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11434")
-        ollama_model = ollama_model or os.getenv("OLLAMA_MODEL", "llama3:latest")
+        self.llm = None
+        self.llm_provider = None
         
-        # Initialize Ollama LLM
-        try:
-            self.llm = ChatOllama(
-                model=ollama_model,
-                base_url=ollama_url,
-                temperature=0.3,
+        # Check for OpenAI API key first (primary)
+        openai_api_key = os.getenv("OPENAI_API_KEY", "").strip()
+        openai_model = openai_model or os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+        
+        if openai_api_key and OPENAI_AVAILABLE:
+            try:
+                self.llm = ChatOpenAI(
+                    model=openai_model,
+                    api_key=openai_api_key,
+                    temperature=0.3,
+                    max_tokens=4000,
+                )
+                # Test connection with a simple request
+                self.llm.invoke("test")
+                self.llm_provider = "openai"
+                logger.info(f"✅ OpenAI LLM initialized: {openai_model}")
+            except Exception as e:
+                logger.warning(f"⚠️ OpenAI initialization failed: {e}")
+                self.llm = None
+        
+        # Fallback to Ollama if OpenAI not available
+        if self.llm is None and OLLAMA_AVAILABLE:
+            ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11434")
+            ollama_model = ollama_model or os.getenv("OLLAMA_MODEL", "llama3:latest")
+            
+            try:
+                self.llm = ChatOllama(
+                    model=ollama_model,
+                    base_url=ollama_url,
+                    temperature=0.3,
+                )
+                # Test connection
+                self.llm.invoke("test")
+                self.llm_provider = "ollama"
+                logger.info(f"✅ Ollama LLM initialized: {ollama_model}")
+            except Exception as e:
+                logger.error(f"❌ Ollama connection failed: {e}")
+                self.llm = None
+        
+        # Check if any LLM is available
+        if self.llm is None:
+            raise RuntimeError(
+                "No LLM available. Please configure either:\n"
+                "  - OPENAI_API_KEY environment variable for OpenAI, or\n"
+                "  - OLLAMA_URL and ensure Ollama is running"
             )
-            # Test connection
-            self.llm.invoke("test")
-            logger.info(f"✅ Ollama LLM initialized: {ollama_model}")
-        except Exception as e:
-            logger.error(f"❌ Ollama connection failed: {e}")
-            raise RuntimeError(f"Ollama LLM is required but not available: {e}")
         
         # Initialize SFIA Knowledge Service
         self.sfia_service = get_sfia_service(fuseki_url=fuseki_url)

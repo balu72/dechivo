@@ -2,10 +2,10 @@
 
 [![React](https://img.shields.io/badge/React-19.2.0-blue.svg)](https://reactjs.org/)
 [![Flask](https://img.shields.io/badge/Flask-3.0.0-green.svg)](https://flask.palletsprojects.com/)
-[![Ollama](https://img.shields.io/badge/Ollama-llama3-purple.svg)](https://ollama.ai/)
+[![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4o-purple.svg)](https://openai.com/)
 [![License](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
 
-A **full-stack AI-powered application** for enhancing ICT job descriptions using the **SFIA (Skills Framework for the Information Age)** framework with integrated knowledge graph technology and local LLM support via Ollama.
+A **full-stack AI-powered application** for enhancing ICT job descriptions using the **SFIA (Skills Framework for the Information Age)** framework with integrated knowledge graph technology and LLM support via **OpenAI** (recommended) or **Ollama** (local).
 
 ---
 
@@ -27,7 +27,8 @@ A **full-stack AI-powered application** for enhancing ICT job descriptions using
   2. **Map to SFIA** - Knowledge Graph finds matching SFIA skills
   3. **Set Skill Levels** - Assigns appropriate SFIA levels (1-7)
   4. **Regenerate JD** - LLM rewrites JD incorporating SFIA skills
-- Local LLM support via **Ollama (llama3:latest)**
+- **OpenAI API support** (GPT-4o, GPT-4o-mini) - recommended
+- **Ollama support** (llama3, local) - optional fallback
 - SFIA 9 Knowledge Graph integration via Apache Jena Fuseki
 - Multi-format file upload support (.txt, .pdf, .docx)
 - Professionally rewritten job descriptions
@@ -44,9 +45,10 @@ A **full-stack AI-powered application** for enhancing ICT job descriptions using
 ### 💻 **Modern Tech Stack**
 - **Frontend**: React 19, Vite, React Router
 - **Backend**: Flask 3, SQLAlchemy, Flask-JWT-Extended
-- **AI/ML**: LangChain, LangGraph, **Ollama (local LLM)**
+- **AI/ML**: LangChain, LangGraph, **OpenAI (primary)**, **Ollama (fallback)**
 - **Database**: SQLite (easily replaceable with PostgreSQL)
 - **Knowledge Graph**: Apache Jena Fuseki, SPARQL, SFIA 9 RDF
+
 
 ---
 
@@ -276,8 +278,13 @@ FUSEKI_DATASET=sfia
 KG_ENABLED=true
 KG_TIMEOUT=10
 
-# OpenAI Configuration (optional fallback)
-# OPENAI_API_KEY=your-openai-api-key-here
+# OpenAI Configuration (recommended for production)
+OPENAI_API_KEY=your-openai-api-key-here
+OPENAI_MODEL=gpt-4o-mini
+
+# Ollama Configuration (optional, for local development)
+# OLLAMA_URL=http://localhost:11434
+# OLLAMA_MODEL=llama3:latest
 ```
 
 ---
@@ -288,11 +295,69 @@ KG_TIMEOUT=10
 |----------|-------------|
 | **Frontend** | React 19, Vite, React Router DOM, Mammoth.js, PDF.js |
 | **Backend** | Flask 3, Flask-CORS, Flask-JWT-Extended, Flask-SQLAlchemy |
-| **AI/ML** | LangChain, LangGraph, **Ollama (llama3:latest)** |
+| **AI/ML** | LangChain, LangGraph, **OpenAI (GPT-4o-mini)**, Ollama (fallback) |
 | **Database** | SQLite (SQLAlchemy ORM) |
 | **Security** | JWT, bcrypt, Token-based authentication |
 | **Knowledge Graph** | Apache Jena Fuseki, SPARQL, SFIA 9 RDF/TTL |
 | **Dev Tools** | ESLint, Python virtual environment, Docker |
+
+---
+
+## 🌐 Production Deployment
+
+### Hosted on VPSDime
+
+| Component | Details |
+|-----------|---------|
+| **Server** | VPSDime Premium VPS (4GB RAM, 2 vCPU) |
+| **IP** | 185.7.81.154 |
+| **Domain** | dechivo.com |
+| **OS** | Ubuntu 24.04 LTS |
+
+### Production Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│               VPSDime VPS - Ubuntu 24.04                    │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌─────────┐     ┌──────────────┐     ┌───────────────┐    │
+│  │  Nginx  │────▶│Flask+Gunicorn│────▶│    Fuseki     │    │
+│  │ :80/443 │     │    :5000     │     │    :3030      │    │
+│  └─────────┘     └──────────────┘     └───────────────┘    │
+│       │                 │                                   │
+│       ▼                 ▼                                   │
+│   Frontend         OpenAI API                               │
+│   (React)         (GPT-4o-mini)                             │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Deployment Commands
+
+```bash
+# Backend service
+sudo systemctl status dechivo-backend
+sudo systemctl restart dechivo-backend
+
+# View logs
+sudo journalctl -u dechivo-backend -f
+
+# Fuseki (Knowledge Graph)
+cd /opt/dechivo/knowledge-graph
+docker-compose up -d
+
+# Nginx
+sudo systemctl reload nginx
+```
+
+### Monthly Cost
+
+| Component | Cost |
+|-----------|------|
+| VPSDime VPS (4GB RAM) | ~$7/month |
+| OpenAI API (GPT-4o-mini) | ~$1-5/month |
+| **Total** | **~$8-12/month** |
 
 ---
 
@@ -305,14 +370,18 @@ KG_TIMEOUT=10
 - [x] Database integration with SQLAlchemy
 - [x] Password hashing with bcrypt
 - [x] **SFIA 9 Knowledge Graph integration (Fuseki)**
-- [x] **Ollama LLM integration (local, no API key needed)**
+- [x] **OpenAI LLM integration (GPT-4o-mini)**
+- [x] **Ollama LLM support (fallback)**
 - [x] **4-step LangGraph workflow**
 - [x] **JD regeneration with SFIA skills**
 - [x] File upload support (.txt, .pdf, .docx)
 - [x] **Prompts centralized in separate file**
 - [x] User profile UI
+- [x] **Production deployment on VPSDime**
 
 ### In Progress 🚧
+- [ ] SSL/HTTPS setup with Let's Encrypt
+- [ ] Firewall configuration (UFW)
 - [ ] Improve SFIA skill matching accuracy
 - [ ] Add comprehensive unit tests
 - [ ] Add API documentation (Swagger/OpenAPI)
@@ -330,7 +399,16 @@ KG_TIMEOUT=10
 
 ## 🐛 Troubleshooting
 
-### Ollama Not Connecting
+### OpenAI API Issues
+```bash
+# Check if API key is configured
+grep OPENAI_API_KEY /opt/dechivo/backend/.env
+
+# Test API key
+curl https://api.openai.com/v1/models -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+### Ollama Not Connecting (Local Dev)
 ```bash
 # Check if Ollama is running
 curl http://localhost:11434/api/tags
@@ -340,9 +418,9 @@ ollama pull llama3:latest
 ```
 
 ### Knowledge Graph Not Finding Skills
-1. Check Fuseki is running: http://localhost:3030
+1. Check Fuseki is running: `docker ps`
 2. Verify SFIA data is loaded (147 skills expected)
-3. Check backend logs for SPARQL errors
+3. Check backend logs: `sudo journalctl -u dechivo-backend -f`
 
 ### Port 5000 Already in Use (macOS)
 ```bash
@@ -358,7 +436,7 @@ ollama pull llama3:latest
 
 ## 📄 License
 
-© 2024-2025 Dechivo. All rights reserved.
+© 2024-2026 Dechivo. All rights reserved.
 
 ---
 
@@ -367,7 +445,9 @@ ollama pull llama3:latest
 - Authentication docs: [AUTHENTICATION_SUMMARY.md](AUTHENTICATION_SUMMARY.md)
 - Backend docs: [backend/README.md](backend/README.md)
 - Knowledge Graph docs: [knowledge-graph/README.md](knowledge-graph/README.md)
+- Deployment workflow: [.agent/workflows/deploy-vpsdime.md](.agent/workflows/deploy-vpsdime.md)
 
 ---
 
-**Built with ❤️ using React, Flask, Ollama, and SFIA Knowledge Graph**
+**Built with ❤️ using React, Flask, OpenAI, and SFIA Knowledge Graph**
+

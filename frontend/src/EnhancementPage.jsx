@@ -9,7 +9,7 @@ import './LandingPage.css'; // Reuse header and footer styles
 // Configure PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
-const API_BASE_URL = 'http://localhost:5000';
+const API_BASE_URL = '';  // Use relative URL for both dev and production
 
 const EnhancementPage = () => {
     const location = useLocation();

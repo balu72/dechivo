@@ -3,10 +3,10 @@ flask-cors==4.0.0
 python-dotenv==1.0.0
 gunicorn==21.2.0
 SPARQLWrapper==2.0.0
-langgraph==0.2.45
-langchain-core==0.3.21
-langchain-openai==0.2.9
-langchain-ollama>=1.0.0
+langgraph>=0.2.45,<0.3.0
+langchain-core>=0.3.21,<0.4.0
+langchain-openai>=0.2.9,<0.3.0
+langchain-ollama>=0.2.0,<1.0.0
 Flask-JWT-Extended==4.6.0
 Flask-SQLAlchemy==3.1.1
 bcrypt==4.1.2
