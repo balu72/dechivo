@@ -44,26 +44,29 @@ jobs:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
         run: |
-          # Create deployment package
-          tar -czf deploy.tar.gz \
-            --exclude='frontend/node_modules' \
-            --exclude='backend/venv' \
-            --exclude='backend/__pycache__' \
+          # Sync only the necessary files using rsync
+          rsync -avz --delete \
+            --exclude='node_modules' \
             --exclude='.git' \
+            --exclude='venv' \
+            --exclude='__pycache__' \
             --exclude='*.pyc' \
-            .
+            --exclude='.env' \
+            --exclude='*.db' \
+            --exclude='backend/dechivo.db' \
+            frontend/dist/ ${VPS_USER}@${VPS_HOST}:/opt/dechivo/frontend/dist/
 
-          # Copy to server
-          scp deploy.tar.gz ${VPS_USER}@${VPS_HOST}:/tmp/
+          rsync -avz \
+            --exclude='venv' \
+            --exclude='__pycache__' \
+            --exclude='*.pyc' \
+            --exclude='.env' \
+            --exclude='*.db' \
+            backend/ ${VPS_USER}@${VPS_HOST}:/opt/dechivo/backend/
 
           # Deploy on server
           ssh ${VPS_USER}@${VPS_HOST} << 'ENDSSH'
             set -e
-            
-            echo "📦 Extracting deployment package..."
-            cd /opt/dechivo
-            sudo tar -xzf /tmp/deploy.tar.gz --strip-components=0
-            rm /tmp/deploy.tar.gz
             
             echo "🐍 Updating backend dependencies..."
             cd /opt/dechivo/backend
