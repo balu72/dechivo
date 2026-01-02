@@ -47,14 +47,16 @@ const EnhancementPage = () => {
         return Object.values(orgContext).filter(v => v.trim()).length;
     };
 
-    // Auto-enhance when content is passed from landing page
+    // Load file content when passed from landing page (no auto-enhance)
     useEffect(() => {
         if (location.state?.fileContent) {
             const { fileContent, fileName } = location.state;
             setEnhancedJD(fileContent);
-            setBackendMessage(`Loaded file: ${fileName}`);
-            // Automatically call backend API
-            enhanceWithBackend(fileContent, fileName);
+            setBackendMessage(`Loaded: ${fileName} - Fill in organizational context and click Enhance`);
+            // Expand org context section to prompt user to fill it
+            setShowOrgContext(true);
+            setStatusMessage({ type: 'info', text: 'Fill in organizational context below, then click Enhance' });
+            setTimeout(() => setStatusMessage(null), 5000);
         }
     }, [location.state]);
 
@@ -511,6 +513,17 @@ const EnhancementPage = () => {
                                     onChange={handleFileChange}
                                     accept=".txt,.doc,.docx,.pdf"
                                 />
+                                <button
+                                    className="btn btn-primary btn-icon"
+                                    onClick={handleEnhanceJD}
+                                    disabled={isLoading}
+                                    style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}
+                                >
+                                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                    Enhance
+                                </button>
                                 <button className="btn btn-secondary btn-icon" onClick={() => {/* Edit functionality */ }} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}>
                                     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                         <path d="M11 4H7C5.89543 4 5 4.89543 5 6V18C5 19.1046 5.89543 20 7 20H17C18.1046 20 19 19.1046 19 18V14M17.5 2.5C18.3284 1.67157 19.6716 1.67157 20.5 2.5C21.3284 3.32843 21.3284 4.67157 20.5 5.5L11 15H8V12L17.5 2.5Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -519,8 +532,8 @@ const EnhancementPage = () => {
                                 </button>
                                 <button
                                     className="btn btn-secondary btn-icon"
-                                    onClick={handleEnhanceJD}
-                                    disabled={isLoading}
+                                    onClick={() => {/* Publish functionality */ }}
+                                    disabled={!enhancedJD.trim()}
                                     style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}
                                 >
                                     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
