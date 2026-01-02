@@ -21,6 +21,31 @@ const EnhancementPage = () => {
     const [statusMessage, setStatusMessage] = useState(null);
     const [backendMessage, setBackendMessage] = useState('Ready to enhance job descriptions...');
     const [showUserMenu, setShowUserMenu] = useState(false);
+    const [showOrgContext, setShowOrgContext] = useState(false);
+
+    // Organizational context state
+    const [orgContext, setOrgContext] = useState({
+        org_industry: '',
+        company_name: '',
+        company_description: '',
+        company_culture: '',
+        company_values: '',
+        business_context: '',
+        role_context: '',
+        role_type: '',
+        role_grade: '',
+        location: '',
+        work_environment: '',
+        reporting_to: ''
+    });
+
+    const handleOrgContextChange = (field, value) => {
+        setOrgContext(prev => ({ ...prev, [field]: value }));
+    };
+
+    const getFilledContextCount = () => {
+        return Object.values(orgContext).filter(v => v.trim()).length;
+    };
 
     // Auto-enhance when content is passed from landing page
     useEffect(() => {
@@ -44,7 +69,8 @@ const EnhancementPage = () => {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    job_description: content
+                    job_description: content,
+                    org_context: orgContext
                 })
             });
 
@@ -154,7 +180,8 @@ const EnhancementPage = () => {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    job_description: enhancedJD
+                    job_description: enhancedJD,
+                    org_context: orgContext
                 })
             });
 
@@ -287,6 +314,169 @@ const EnhancementPage = () => {
                         {statusMessage.text}
                     </div>
                 )}
+
+                {/* Organizational Context Section */}
+                <div className="org-context-section">
+                    <button
+                        className="org-context-toggle"
+                        onClick={() => setShowOrgContext(!showOrgContext)}
+                    >
+                        <svg viewBox="0 0 24 24" fill="none" width="20" height="20">
+                            <path d="M19 21V19C19 17.9391 18.5786 16.9217 17.8284 16.1716C17.0783 15.4214 16.0609 15 15 15H9C7.93913 15 6.92172 15.4214 6.17157 16.1716C5.42143 16.9217 5 17.9391 5 19V21M16 7C16 9.20914 14.2091 11 12 11C9.79086 11 8 9.20914 8 7C8 4.79086 9.79086 3 12 3C14.2091 3 16 4.79086 16 7Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                        <span>Organizational Context</span>
+                        {getFilledContextCount() > 0 && (
+                            <span className="context-badge">{getFilledContextCount()} filled</span>
+                        )}
+                        <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            width="16"
+                            height="16"
+                            style={{ transform: showOrgContext ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
+                        >
+                            <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                    </button>
+
+                    {showOrgContext && (
+                        <div className="org-context-form">
+                            <div className="org-context-grid">
+                                {/* Company Information */}
+                                <div className="org-context-group">
+                                    <h4>Company Information</h4>
+                                    <div className="form-field">
+                                        <label>Company Name</label>
+                                        <input
+                                            type="text"
+                                            placeholder="e.g., TechCorp Ltd"
+                                            value={orgContext.company_name}
+                                            onChange={(e) => handleOrgContextChange('company_name', e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="form-field">
+                                        <label>Industry</label>
+                                        <input
+                                            type="text"
+                                            placeholder="e.g., Financial Services, Healthcare"
+                                            value={orgContext.org_industry}
+                                            onChange={(e) => handleOrgContextChange('org_industry', e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="form-field">
+                                        <label>Company Description</label>
+                                        <textarea
+                                            placeholder="Brief description of the company..."
+                                            rows="2"
+                                            value={orgContext.company_description}
+                                            onChange={(e) => handleOrgContextChange('company_description', e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="form-field">
+                                        <label>Company Culture</label>
+                                        <input
+                                            type="text"
+                                            placeholder="e.g., Innovation-focused, collaborative"
+                                            value={orgContext.company_culture}
+                                            onChange={(e) => handleOrgContextChange('company_culture', e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="form-field">
+                                        <label>Company Values</label>
+                                        <input
+                                            type="text"
+                                            placeholder="e.g., Integrity, Excellence, Innovation"
+                                            value={orgContext.company_values}
+                                            onChange={(e) => handleOrgContextChange('company_values', e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Role Details */}
+                                <div className="org-context-group">
+                                    <h4>Role Details</h4>
+                                    <div className="form-field">
+                                        <label>Role Type</label>
+                                        <select
+                                            value={orgContext.role_type}
+                                            onChange={(e) => handleOrgContextChange('role_type', e.target.value)}
+                                        >
+                                            <option value="">Select type...</option>
+                                            <option value="Permanent">Permanent</option>
+                                            <option value="Contract">Contract</option>
+                                            <option value="Fixed-term">Fixed-term</option>
+                                            <option value="Part-time">Part-time</option>
+                                            <option value="Internship">Internship</option>
+                                        </select>
+                                    </div>
+                                    <div className="form-field">
+                                        <label>Role Grade/Band</label>
+                                        <input
+                                            type="text"
+                                            placeholder="e.g., Senior (L5), Manager (M2)"
+                                            value={orgContext.role_grade}
+                                            onChange={(e) => handleOrgContextChange('role_grade', e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="form-field">
+                                        <label>Reports To</label>
+                                        <input
+                                            type="text"
+                                            placeholder="e.g., Engineering Manager, CTO"
+                                            value={orgContext.reporting_to}
+                                            onChange={(e) => handleOrgContextChange('reporting_to', e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="form-field">
+                                        <label>Business Context</label>
+                                        <textarea
+                                            placeholder="Business context for this role..."
+                                            rows="2"
+                                            value={orgContext.business_context}
+                                            onChange={(e) => handleOrgContextChange('business_context', e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="form-field">
+                                        <label>Role-Specific Context</label>
+                                        <textarea
+                                            placeholder="Any company-specific context for this role..."
+                                            rows="2"
+                                            value={orgContext.role_context}
+                                            onChange={(e) => handleOrgContextChange('role_context', e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Work Environment */}
+                                <div className="org-context-group">
+                                    <h4>Work Environment</h4>
+                                    <div className="form-field">
+                                        <label>Location</label>
+                                        <input
+                                            type="text"
+                                            placeholder="e.g., London, UK / New York, NY"
+                                            value={orgContext.location}
+                                            onChange={(e) => handleOrgContextChange('location', e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="form-field">
+                                        <label>Work Environment</label>
+                                        <select
+                                            value={orgContext.work_environment}
+                                            onChange={(e) => handleOrgContextChange('work_environment', e.target.value)}
+                                        >
+                                            <option value="">Select environment...</option>
+                                            <option value="Onsite">Onsite</option>
+                                            <option value="Remote">Remote</option>
+                                            <option value="Hybrid">Hybrid</option>
+                                            <option value="Flexible">Flexible</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
 
                 {/* Editor Container */}
                 <div className="editor-container" style={{ gridTemplateColumns: '1fr' }}>
