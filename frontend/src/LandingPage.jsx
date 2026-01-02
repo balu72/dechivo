@@ -103,7 +103,7 @@ const LandingPage = () => {
             {/* Header */}
             <header className={`header ${scrolled ? 'scrolled' : ''}`}>
                 <div className="header-container">
-                    <div className="logo">Dechivo</div>
+                    <div className="logo">Dechivo<span className="beta-tag">. beta</span></div>
                     <nav className="nav">
                         <ul className="nav-links">
                             <li>
