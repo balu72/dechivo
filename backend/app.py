@@ -268,6 +268,22 @@ def enhance_jd():
     """
     Endpoint to enhance job descriptions using SFIA framework (Protected)
     Uses Knowledge Graph for skill mapping when available
+    
+    Request body:
+        job_description: str - The job description text to enhance
+        org_context: dict (optional) - Organizational context including:
+            - org_industry: Industry sector
+            - company_name: Name of the company
+            - company_description: Brief description of the company
+            - company_culture: Company culture description
+            - company_values: Core company values
+            - business_context: Business context for the role
+            - role_context: Company-specific role context
+            - role_type: Type of role (permanent, contract, etc.)
+            - role_grade: Grade/band of the role
+            - location: Work location
+            - work_environment: Work environment (remote, hybrid, onsite)
+            - reporting_to: Reporting manager/title
     """
     logger.info("POST /api/enhance-jd - Enhancement request received")
     try:
@@ -276,9 +292,12 @@ def enhance_jd():
         
         data = request.get_json()
         job_description = data.get('job_description', '')
+        org_context = data.get('org_context', {})
         
         logger.info(f"JD enhancement requested by user: {user.username}")
         logger.info(f"JD length: {len(job_description)} characters")
+        if org_context:
+            logger.info(f"Org context provided: {list(org_context.keys())}")
         
         if not job_description:
             logger.warning("Enhancement failed: No job description provided")
@@ -288,7 +307,7 @@ def enhance_jd():
         
         # Use the real enhancement service with Knowledge Graph
         enhancer = get_enhancer()
-        enhancement_result = enhancer.enhance(job_description)
+        enhancement_result = enhancer.enhance(job_description, org_context=org_context)
         
         # Get skills and regenerated JD
         skills = enhancement_result.get('skills', [])

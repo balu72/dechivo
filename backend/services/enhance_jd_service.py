@@ -41,6 +41,7 @@ logger = logging.getLogger(__name__)
 class EnhancementState(TypedDict):
     """State object for the job description enhancement workflow"""
     job_description: str
+    org_context: Dict[str, Any]  # Organizational context for JD generation
     extracted_keywords: List[str]
     sfia_skills: List[Dict[str, Any]]
     enhanced_skills: List[Dict[str, Any]]
@@ -327,6 +328,7 @@ class JobDescriptionEnhancer:
         
         job_description = state["job_description"]
         enhanced_skills = state["enhanced_skills"]
+        org_context = state.get("org_context", {})
         
         if not enhanced_skills:
             logger.info("No SFIA skills to incorporate, using original JD")
@@ -341,9 +343,10 @@ class JobDescriptionEnhancer:
                 for skill in enhanced_skills
             ])
             
+            # Include organizational context if provided
             messages = [
                 SystemMessage(content=get_jd_regeneration_system_prompt()),
-                HumanMessage(content=format_jd_regeneration_user_prompt(job_description, skills_text))
+                HumanMessage(content=format_jd_regeneration_user_prompt(job_description, skills_text, org_context))
             ]
             
             response = self.llm.invoke(messages)
@@ -468,22 +471,38 @@ class JobDescriptionEnhancer:
         
         return level_descriptions.get(level, f"Level {level} proficiency")
     
-    def enhance(self, job_description: str) -> Dict[str, Any]:
+    def enhance(self, job_description: str, org_context: Dict[str, Any] = None) -> Dict[str, Any]:
         """
         Main method to enhance a job description
         
         Args:
-            job_description: Raw job description text
+            job_description: The original job description
+            org_context: Optional organizational context dictionary containing:
+                - org_industry: Industry sector
+                - company_name: Name of the company
+                - company_description: Brief description of the company
+                - company_culture: Company culture description
+                - company_values: Core company values
+                - business_context: Business context for the role
+                - role_context: Company-specific role context
+                - role_type: Type of role (permanent, contract, etc.)
+                - role_grade: Grade/band of the role
+                - location: Work location
+                - work_environment: Work environment (remote, hybrid, onsite)
+                - reporting_to: Reporting manager/title
             
         Returns:
-            Dictionary containing enhanced skills, regenerated JD, and metadata
+            Dictionary containing enhanced skills and metadata
         """
         logger.info("Starting job description enhancement")
         logger.info(f"Knowledge Graph status: Connected")
+        if org_context:
+            logger.info(f"Organizational context provided: {list(org_context.keys())}")
         
         # Initialize state
         initial_state = {
             "job_description": job_description,
+            "org_context": org_context or {},
             "extracted_keywords": [],
             "sfia_skills": [],
             "enhanced_skills": [],
