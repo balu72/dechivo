@@ -11,6 +11,13 @@ from models import db, User
 from auth import token_required, get_current_user
 from services.sfia_km_service import get_sfia_service
 from services.enhance_jd_service import get_enhancer, reset_enhancer
+import time
+from analytics import (
+    track_enhancement_request,
+    track_enhancement_success,
+    track_enhancement_failure,
+    track_api_error
+)
 
 app = Flask(__name__)
 CORS(app, 
@@ -305,6 +312,14 @@ def enhance_jd():
                 'error': 'Job description is required'
             }), 400
         
+        # Track enhancement request
+        start_time = time.time()
+        track_enhancement_request(
+            user_id=str(current_user_id),
+            jd_length=len(job_description),
+            has_org_context=bool(org_context)
+        )
+        
         # Use the real enhancement service with Knowledge Graph
         enhancer = get_enhancer()
         enhancement_result = enhancer.enhance(job_description, org_context=org_context)
@@ -345,6 +360,17 @@ def enhance_jd():
 """
         
         logger.info(f"JD enhanced successfully. Skills found: {len(skills)}")
+        
+        # Track successful enhancement
+        duration_ms = int((time.time() - start_time) * 1000)
+        track_enhancement_success(
+            user_id=str(current_user_id),
+            skills_count=len(skills),
+            duration_ms=duration_ms,
+            llm_provider=enhancer.llm_provider if hasattr(enhancer, 'llm_provider') else 'unknown',
+            kg_connected=enhancement_result.get('knowledge_graph_connected', False)
+        )
+        
         return jsonify({
             'success': True,
             'enhanced_jd': enhanced_jd,
@@ -354,11 +380,21 @@ def enhance_jd():
             'extracted_keywords': enhancement_result.get('extracted_keywords', []),
             'knowledge_graph_connected': enhancement_result.get('knowledge_graph_connected', False),
             'workflow_messages': enhancement_result.get('workflow_messages', []),
-            'message': 'Job description enhanced successfully'
+            'message': 'Job description enhanced successfully',
+            'processing_time_ms': duration_ms
         })
     
     except Exception as e:
         logger.error(f"Error enhancing JD: {str(e)}", exc_info=True)
+        
+        # Track failure
+        duration_ms = int((time.time() - start_time) * 1000) if 'start_time' in locals() else 0
+        track_enhancement_failure(
+            user_id=str(current_user_id) if 'current_user_id' in locals() else 'unknown',
+            error=str(e),
+            duration_ms=duration_ms
+        )
+        
         return jsonify({
             'error': str(e)
         }), 500
