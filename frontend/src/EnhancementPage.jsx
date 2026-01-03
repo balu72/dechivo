@@ -5,6 +5,14 @@ import mammoth from 'mammoth';
 import * as pdfjsLib from 'pdfjs-dist';
 import './EnhancementPage.css';
 import './LandingPage.css'; // Reuse header and footer styles
+import {
+    trackFileUpload,
+    trackEnhancementStarted,
+    trackEnhancementCompleted,
+    trackEnhancementFailed,
+    trackDownload,
+    trackPageView
+} from './analytics';
 
 // Configure PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
@@ -149,6 +157,10 @@ const EnhancementPage = () => {
             setEnhancedJD(textContent);
             setStatusMessage({ type: 'success', text: `Loaded: ${file.name}` });
             setBackendMessage(`File loaded successfully: ${file.name}`);
+
+            // Track file upload
+            trackFileUpload(file.name, fileExtension, file.size);
+
             setTimeout(() => setStatusMessage(null), 3000);
         } catch (error) {
             console.error('Error reading file:', error);
@@ -175,6 +187,9 @@ const EnhancementPage = () => {
         setStatusMessage({ type: 'info', text: 'Enhancing job description...' });
         setBackendMessage('Sending request to backend...');
 
+        const startTime = Date.now();
+        trackEnhancementStarted(enhancedJD.length, getFilledContextCount());
+
         try {
             const response = await authenticatedFetch(`${API_BASE_URL}/api/enhance-jd`, {
                 method: 'POST',
@@ -193,6 +208,11 @@ const EnhancementPage = () => {
                 setEnhancedJD(data.enhanced_jd);
                 setStatusMessage({ type: 'success', text: 'Job description enhanced successfully!' });
                 setBackendMessage(data.message || 'Enhancement completed');
+
+                // Track successful enhancement
+                const duration = (Date.now() - startTime) / 1000;
+                trackEnhancementCompleted(data.skills_count || 0, duration, getFilledContextCount());
+
                 setTimeout(() => setStatusMessage(null), 3000);
             } else {
                 throw new Error(data.error || 'Failed to enhance job description');
@@ -202,6 +222,9 @@ const EnhancementPage = () => {
             const errorMessage = error.message || 'Failed to connect to backend';
             setStatusMessage({ type: 'error', text: errorMessage });
             setBackendMessage(`Error: ${errorMessage}`);
+
+            // Track failed enhancement
+            trackEnhancementFailed(errorMessage);
 
             // If session expired, redirect to login
             if (errorMessage.includes('Session expired') || errorMessage.includes('Not authenticated')) {
@@ -235,6 +258,10 @@ const EnhancementPage = () => {
         URL.revokeObjectURL(url);
 
         setStatusMessage({ type: 'success', text: 'Enhanced JD saved successfully!' });
+
+        // Track download
+        trackDownload('txt');
+
         setTimeout(() => setStatusMessage(null), 3000);
     };
 

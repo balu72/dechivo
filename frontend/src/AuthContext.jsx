@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { identifyUser, resetUser, trackLogin, trackSignup, trackLogout } from './analytics';
 
 const AuthContext = createContext(null);
 
@@ -190,6 +191,10 @@ export const AuthProvider = ({ children }) => {
             setAccessToken(data.access_token);
             setRefreshToken(data.refresh_token);
 
+            // Track login event
+            identifyUser(data.user.id, data.user);
+            trackLogin(data.user.id);
+
             return { success: true };
         } catch (error) {
             console.error('Login error:', error);
@@ -222,6 +227,10 @@ export const AuthProvider = ({ children }) => {
             setAccessToken(data.access_token);
             setRefreshToken(data.refresh_token);
 
+            // Track signup event
+            identifyUser(data.user.id, data.user);
+            trackSignup(data.user.id, data.user.email, data.user.username);
+
             return { success: true };
         } catch (error) {
             console.error('Registration error:', error);
@@ -250,6 +259,9 @@ export const AuthProvider = ({ children }) => {
             setUser(null);
             setAccessToken(null);
             setRefreshToken(null);
+            // Track logout and reset user
+            trackLogout();
+            resetUser();
         }
     };
 
