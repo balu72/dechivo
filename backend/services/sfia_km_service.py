@@ -241,17 +241,23 @@ class SFIAKnowledgeService:
         Returns:
             List of matching skills
         """
-        # Escape special characters in keyword for SPARQL regex
-        # Remove any characters that could break the query
+        # First try smart search with relevance scoring
+        results = self.smart_search_skills(keyword, limit)
+        if results:
+            return results
+        
+        # Fallback to basic regex search
+        return self._basic_search_skills(keyword, limit)
+    
+    def _basic_search_skills(self, keyword, limit=50):
+        """Basic regex-based skill search (fallback)"""
         import re as regex_module
-        # Keep only alphanumeric, spaces, and basic punctuation
         safe_keyword = regex_module.sub(r'[^a-zA-Z0-9\s\-]', '', keyword)
         safe_keyword = safe_keyword.strip()
         
         if not safe_keyword:
             return []
         
-        # SFIA uses skillDescription and skillNotes properties
         query = f"""
         {self.prefixes}
         
@@ -282,6 +288,242 @@ class SFIAKnowledgeService:
         result = self._execute_query(query)
         return self._format_search_results(result)
     
+    def smart_search_skills(self, keyword, limit=10):
+        """
+        Smart skill search with relevance scoring and keyword mapping
+        
+        Uses:
+        1. Direct keyword-to-SFIA mapping for common terms
+        2. Relevance scoring based on match location
+        3. Prioritizes exact matches over partial matches
+        
+        Args:
+            keyword: Search keyword
+            limit: Maximum number of results
+            
+        Returns:
+            List of matching skills sorted by relevance
+        """
+        import re as regex_module
+        
+        # Clean keyword
+        clean_keyword = regex_module.sub(r'[^a-zA-Z0-9\s\-]', '', keyword.strip().lower())
+        if not clean_keyword:
+            return []
+        
+        # Check keyword mapping first for direct matches
+        mapped_codes = self._get_mapped_skill_codes(clean_keyword)
+        
+        # Get all potential matches from KG
+        all_matches = []
+        
+        # If we have mapped codes, get those skills first
+        for code in mapped_codes:
+            skill = self.get_skill_by_code(code)
+            if skill:
+                all_matches.append({
+                    'code': skill['code'],
+                    'name': skill['name'],
+                    'category': skill.get('category', ''),
+                    'description': skill.get('description', '')[:200] if skill.get('description') else '',
+                    'score': 100,  # Highest priority for mapped skills
+                    'match_type': 'keyword_map'
+                })
+        
+        # Search by keyword in label and description
+        query = f"""
+        {self.prefixes}
+        
+        SELECT DISTINCT ?skill ?code ?label ?category ?description ?notes
+        WHERE {{
+            ?skill a sfia:Skill ;
+                   skos:notation ?code ;
+                   rdfs:label ?label .
+            
+            OPTIONAL {{ 
+                ?skill sfia:skillCategory ?categoryUri .
+                ?categoryUri rdfs:label ?category 
+            }}
+            OPTIONAL {{ ?skill sfia:skillDescription ?description }}
+            OPTIONAL {{ ?skill sfia:skillNotes ?notes }}
+        }}
+        """
+        
+        result = self._execute_query(query)
+        
+        # Score each skill based on relevance
+        for binding in result.get('results', {}).get('bindings', []):
+            code = binding.get('code', {}).get('value', '')
+            label = binding.get('label', {}).get('value', '').lower()
+            desc = binding.get('description', {}).get('value', '').lower() if binding.get('description') else ''
+            notes = binding.get('notes', {}).get('value', '').lower() if binding.get('notes') else ''
+            
+            # Skip if already in results
+            if any(m['code'] == code for m in all_matches):
+                continue
+            
+            # Calculate relevance score
+            score = 0
+            match_type = None
+            
+            # Exact label match (highest)
+            if clean_keyword == label:
+                score = 95
+                match_type = 'exact_label'
+            # Label starts with keyword
+            elif label.startswith(clean_keyword):
+                score = 85
+                match_type = 'label_prefix'
+            # Label contains keyword as whole word
+            elif regex_module.search(r'\b' + regex_module.escape(clean_keyword) + r'\b', label):
+                score = 75
+                match_type = 'label_word'
+            # Label contains keyword
+            elif clean_keyword in label:
+                score = 65
+                match_type = 'label_partial'
+            # Code matches
+            elif clean_keyword.upper() == code:
+                score = 90
+                match_type = 'exact_code'
+            # Description contains keyword as whole word
+            elif desc and regex_module.search(r'\b' + regex_module.escape(clean_keyword) + r'\b', desc):
+                score = 50
+                match_type = 'description'
+            # Notes contains keyword
+            elif notes and regex_module.search(r'\b' + regex_module.escape(clean_keyword) + r'\b', notes):
+                score = 40
+                match_type = 'notes'
+            # Partial match in description
+            elif desc and clean_keyword in desc:
+                score = 30
+                match_type = 'description_partial'
+            
+            if score > 0:
+                all_matches.append({
+                    'code': code,
+                    'name': binding.get('label', {}).get('value', ''),
+                    'category': binding.get('category', {}).get('value', ''),
+                    'description': desc[:200] + '...' if len(desc) > 200 else desc,
+                    'score': score,
+                    'match_type': match_type
+                })
+        
+        # Sort by score descending and return top results
+        all_matches.sort(key=lambda x: x['score'], reverse=True)
+        
+        # Return top matches (remove score from output)
+        return [{k: v for k, v in m.items() if k != 'score' and k != 'match_type'} 
+                for m in all_matches[:limit]]
+    
+    def _get_mapped_skill_codes(self, keyword):
+        """
+        Get SFIA skill codes for common keyword mappings
+        
+        This provides direct mapping for commonly used terms that may not
+        match SFIA skill names exactly.
+        """
+        # Common keyword to SFIA skill code mappings
+        keyword_map = {
+            # Programming & Development
+            'programming': ['PROG'],
+            'coding': ['PROG'],
+            'software development': ['PROG', 'SWDN'],
+            'software engineering': ['PROG', 'SWDN', 'SLEN'],
+            'development': ['PROG'],
+            'software design': ['SWDN'],
+            'system design': ['DESN'],
+            'systems design': ['DESN'],
+            'architecture': ['ARCH', 'STPL'],
+            'solution architecture': ['ARCH'],
+            'enterprise architecture': ['STPL'],
+            
+            # Data
+            'data analysis': ['DAAN'],
+            'data analytics': ['DAAN'],
+            'data science': ['DATS'],
+            'data engineering': ['DENG'],
+            'machine learning': ['MLNG', 'DATS'],
+            'artificial intelligence': ['MLNG', 'DATS'],
+            'ai': ['MLNG', 'DATS'],
+            'ml': ['MLNG'],
+            'database': ['DBDS', 'DBAD'],
+            'database design': ['DBDS'],
+            'database administration': ['DBAD'],
+            'big data': ['DENG', 'DATS'],
+            'etl': ['DENG'],
+            'data warehouse': ['DENG', 'DBDS'],
+            
+            # Security
+            'cybersecurity': ['SCTY'],
+            'cyber security': ['SCTY'],
+            'information security': ['SCTY'],
+            'security': ['SCTY'],
+            'security architecture': ['SCAD'],
+            'penetration testing': ['PENT'],
+            'vulnerability assessment': ['VUAS'],
+            'security operations': ['SCAD', 'SCTY'],
+            'threat detection': ['THIN'],
+            'incident response': ['USUP'],
+            'incident management': ['USUP'],
+            
+            # Infrastructure & Operations
+            'devops': ['RELM', 'CFMG'],
+            'cloud': ['CLDV', 'ITOP'],
+            'cloud computing': ['CLDV'],
+            'infrastructure': ['ITOP', 'ITMG'],
+            'networking': ['NTAS', 'NTDS'],
+            'network': ['NTAS', 'NTDS'],
+            'server': ['ITOP'],
+            'system administration': ['ITOP'],
+            'sysadmin': ['ITOP'],
+            
+            # Project & Management
+            'project management': ['PRMG'],
+            'program management': ['PGMG'],
+            'portfolio management': ['POMG'],
+            'agile': ['DLMG', 'PRMG'],
+            'scrum': ['DLMG'],
+            'leadership': ['PRMG', 'ITMG'],
+            'team lead': ['PRMG'],
+            'management': ['ITMG', 'PRMG'],
+            'stakeholder management': ['RLMT'],
+            'requirements': ['BCRE', 'REQM'],
+            'requirements analysis': ['REQM'],
+            'business analysis': ['BUAN'],
+            
+            # Testing & Quality
+            'testing': ['TEST'],
+            'qa': ['TEST'],
+            'quality assurance': ['TEST'],
+            'test automation': ['TEST'],
+            'performance testing': ['PERF'],
+            
+            # Other
+            'release management': ['RELM'],
+            'configuration management': ['CFMG'],
+            'change management': ['CHMG'],
+            'service management': ['SLMO'],
+            'itil': ['SLMO'],
+            'documentation': ['INCA'],
+            'technical writing': ['INCA'],
+            'user experience': ['HCEV'],
+            'ux': ['HCEV'],
+            'ui': ['HCEV'],
+            'automation': ['AUTY'],
+        }
+        
+        # Check for exact match
+        if keyword in keyword_map:
+            return keyword_map[keyword]
+        
+        # Check for partial matches
+        for key, codes in keyword_map.items():
+            if key in keyword or keyword in key:
+                return codes
+        
+        return []
+
     def _format_search_results(self, result):
         """Format SPARQL result into search results"""
         skills = []
