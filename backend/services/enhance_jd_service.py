@@ -29,7 +29,8 @@ from prompts.enhance_jd_prompts import (
     get_skill_extraction_prompt,
     get_jd_regeneration_system_prompt,
     format_skill_extraction_user_prompt,
-    format_jd_regeneration_user_prompt
+    format_jd_regeneration_user_prompt,
+    format_skills_detailed
 )
 
 import logging
@@ -294,6 +295,7 @@ class JobDescriptionEnhancer:
                     'code': skill['code'],
                     'name': skill.get('label', skill.get('name', '')),
                     'category': skill.get('category', ''),
+                    'description': skill.get('description', ''),  # Skill definition
                     'level': assigned_level,
                     'level_name': self._get_level_name(assigned_level),
                     'level_description': level_description,
@@ -337,11 +339,8 @@ class JobDescriptionEnhancer:
             return state
         
         try:
-            # Format SFIA skills for the prompt
-            skills_text = "\n".join([
-                f"- {skill['name']} ({skill['code']}) - Level {skill['level']} ({skill['level_name']})"
-                for skill in enhanced_skills
-            ])
+            # Format skills with detailed descriptions for better LLM context
+            skills_text = format_skills_detailed(enhanced_skills)
             
             # Include organizational context if provided
             messages = [
