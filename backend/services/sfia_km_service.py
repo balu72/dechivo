@@ -468,15 +468,24 @@ class SFIAKnowledgeService:
             'incident management': ['USUP'],
             
             # Infrastructure & Operations
-            'devops': ['RELM', 'CFMG'],
-            'cloud': ['CLDV', 'ITOP'],
-            'cloud computing': ['CLDV'],
-            'infrastructure': ['ITOP', 'ITMG'],
+            'devops': ['RELM', 'CFMG', 'DEPL'],
+            'cloud': ['IFDN', 'ITOP', 'DEPL'],
+            'cloud computing': ['IFDN', 'ITOP', 'DEPL'],
+            'aws': ['IFDN', 'ITOP'],
+            'azure': ['IFDN', 'ITOP'],
+            'gcp': ['IFDN', 'ITOP'],
+            'infrastructure': ['IFDN', 'ITOP'],
+            'infrastructure design': ['IFDN'],
+            'deployment': ['DEPL'],
             'networking': ['NTAS', 'NTDS'],
             'network': ['NTAS', 'NTDS'],
             'server': ['ITOP'],
             'system administration': ['ITOP'],
             'sysadmin': ['ITOP'],
+            'kubernetes': ['IFDN', 'DEPL'],
+            'docker': ['IFDN', 'DEPL'],
+            'containers': ['IFDN', 'DEPL'],
+            'terraform': ['IFDN', 'CFMG'],
             
             # Project & Management
             'project management': ['PRMG'],
