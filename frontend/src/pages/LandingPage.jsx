@@ -5,8 +5,9 @@ import '../styles/LandingPage.css';
 
 const LandingPage = () => {
     const navigate = useNavigate();
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, user, logout } = useAuth();
     const [scrolled, setScrolled] = useState(false);
+    const [showUserMenu, setShowUserMenu] = useState(false);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -51,7 +52,40 @@ const LandingPage = () => {
                         </div>
                     )}
                     {isAuthenticated && (
-                        <Link to="/login" className="btn btn-primary">Login</Link>
+                        <div className="user-menu-container">
+                            <button
+                                className="user-menu-button"
+                                onClick={() => setShowUserMenu(!showUserMenu)}
+                            >
+                                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                    <path d="M10 10C12.21 10 14 8.21 14 6C14 3.79 12.21 2 10 2C7.79 2 6 3.79 6 6C6 8.21 7.79 10 10 10ZM10 12C7.33 12 2 13.34 2 16V18H18V16C18 13.34 12.67 12 10 12Z" fill="currentColor" />
+                                </svg>
+                                <span>{user?.username || 'User'}</span>
+                            </button>
+                            {showUserMenu && (
+                                <div className="user-dropdown">
+                                    <div className="user-info">
+                                        <div className="user-avatar">
+                                            {user?.username?.charAt(0).toUpperCase() || 'U'}
+                                        </div>
+                                        <div className="user-details">
+                                            <div className="user-name">{user?.full_name || user?.username}</div>
+                                            <div className="user-email">{user?.email}</div>
+                                        </div>
+                                    </div>
+                                    <div className="dropdown-divider"></div>
+                                    <button
+                                        className="dropdown-item logout-button"
+                                        onClick={async () => {
+                                            await logout();
+                                            navigate('/login');
+                                        }}
+                                    >
+                                        Logout
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     )}
                 </div>
             </header>
