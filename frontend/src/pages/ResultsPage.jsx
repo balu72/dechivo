@@ -62,12 +62,6 @@ const ResultsPage = () => {
         navigate('/enhance');
     };
 
-    const handleCopyToClipboard = () => {
-        navigator.clipboard.writeText(enhancedJD);
-        setStatusMessage({ type: 'success', text: 'Copied to clipboard!' });
-        setTimeout(() => setStatusMessage(null), 2000);
-    };
-
     if (!resultData) {
         return (
             <div className="loading-container">
@@ -157,23 +151,13 @@ const ResultsPage = () => {
                     {/* Action Buttons */}
                     <div className="results-actions">
                         <button
-                            className="btn btn-primary btn-icon"
-                            onClick={() => handleDownload('txt')}
-                        >
-                            <svg viewBox="0 0 24 24" fill="none" width="20" height="20">
-                                <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15M7 10L12 15M12 15L17 10M12 15V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                            Download
-                        </button>
-                        <button
                             className="btn btn-secondary btn-icon"
-                            onClick={handleCopyToClipboard}
+                            onClick={() => {/* Edit functionality */ }}
                         >
                             <svg viewBox="0 0 24 24" fill="none" width="20" height="20">
-                                <path d="M8 4V16C8 17.1046 8.89543 18 10 18H18C19.1046 18 20 17.1046 20 16V7.24162C20 6.7034 19.7893 6.18789 19.4142 5.81282L16.1716 2.57121C15.7965 2.19614 15.281 1.98547 14.7428 1.98547H10C8.89543 2 8 2.89543 8 4Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                <path d="M16 18V20C16 21.1046 15.1046 22 14 22H6C4.89543 22 4 21.1046 4 20V8C4 6.89543 4.89543 6 6 6H8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                <path d="M11 4H7C5.89543 4 5 4.89543 5 6V18C5 19.1046 5.89543 20 7 20H17C18.1046 20 19 19.1046 19 18V14M17.5 2.5C18.3284 1.67157 19.6716 1.67157 20.5 2.5C21.3284 3.32843 21.3284 4.67157 20.5 5.5L11 15H8V12L17.5 2.5Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                             </svg>
-                            Copy
+                            Edit
                         </button>
                         <button
                             className="btn btn-secondary btn-icon"
@@ -183,6 +167,15 @@ const ResultsPage = () => {
                                 <path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                             </svg>
                             Publish
+                        </button>
+                        <button
+                            className="btn btn-primary btn-icon"
+                            onClick={() => handleDownload('txt')}
+                        >
+                            <svg viewBox="0 0 24 24" fill="none" width="20" height="20">
+                                <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15M7 10L12 15M12 15L17 10M12 15V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                            Download
                         </button>
                         <button
                             className="btn btn-ghost btn-icon"
@@ -214,21 +207,7 @@ const ResultsPage = () => {
                         </div>
                     </div>
 
-                    {/* Skills Summary */}
-                    {resultData.skills && resultData.skills.length > 0 && (
-                        <div className="skills-summary">
-                            <h3>SFIA Skills Identified</h3>
-                            <div className="skills-grid">
-                                {resultData.skills.map((skill, index) => (
-                                    <div key={index} className="skill-card">
-                                        <div className="skill-code">{skill.code}</div>
-                                        <div className="skill-name">{skill.name}</div>
-                                        <div className="skill-level">Level {skill.level}</div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
+
                 </div>
             </main>
 
