@@ -92,16 +92,23 @@
 .results-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.75rem;
-    margin-bottom: 1.5rem;
-    padding-bottom: 1.5rem;
-    border-bottom: 1px solid #E5E7EB;
+    gap: 0.5rem;
 }
 
 .results-actions .btn-icon {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+}
+
+/* Section Header Row */
+.section-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 1rem;
 }
 
 /* Section Label */
