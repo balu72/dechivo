@@ -240,7 +240,7 @@ const EnhancementPage = () => {
                 )}
 
                 <div className="enhance-input-container">
-                    <h1 className="page-highlight">Add organizational context and your job description to get SFIA-enhanced results</h1>
+                    <h1 className="page-highlight">Add role and organizational context</h1>
 
                     {/* Organizational Context Section */}
                     <div className="input-section">
