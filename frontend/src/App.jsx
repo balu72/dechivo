@@ -1,10 +1,10 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './AuthContext'
-import ProtectedRoute from './ProtectedRoute'
-import LandingPage from './LandingPage'
-import LoginPage from './LoginPage'
-import RegisterPage from './RegisterPage'
-import EnhancementPage from './EnhancementPage'
+import ProtectedRoute from './pages/ProtectedRoute'
+import LandingPage from './pages/LandingPage'
+import LoginPage from './pages/LoginPage'
+import RegisterPage from './pages/RegisterPage'
+import EnhancementPage from './pages/EnhancementPage'
 
 function App() {
   return (

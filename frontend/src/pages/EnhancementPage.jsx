@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from './AuthContext';
+import { useAuth } from '../AuthContext';
 import mammoth from 'mammoth';
 import * as pdfjsLib from 'pdfjs-dist';
-import './EnhancementPage.css';
-import './LandingPage.css'; // Reuse header and footer styles
+import '../styles/EnhancementPage.css';
+import '../styles/LandingPage.css'; // Reuse header and footer styles
 import {
     trackFileUpload,
     trackEnhancementStarted,
@@ -12,7 +12,7 @@ import {
     trackEnhancementFailed,
     trackDownload,
     trackPageView
-} from './analytics';
+} from '../analytics';
 
 // Configure PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
