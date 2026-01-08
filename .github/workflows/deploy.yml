@@ -53,6 +53,9 @@ jobs:
             --exclude='*.pyc' \
             --exclude='.env' \
             --exclude='*.db' \
+            --exclude='*.md' \
+            --exclude='*.txt' \
+            --exclude='LICENSE' \
             --exclude='backend/dechivo.db' \
             frontend/dist/ ${VPS_USER}@${VPS_HOST}:/opt/dechivo/frontend/dist/
 
@@ -62,6 +65,9 @@ jobs:
             --exclude='*.pyc' \
             --exclude='.env' \
             --exclude='*.db' \
+            --exclude='*.md' \
+            --exclude='*.txt' \
+            --exclude='LICENSE' \
             backend/ ${VPS_USER}@${VPS_HOST}:/opt/dechivo/backend/
 
           # Deploy on server
