@@ -37,9 +37,6 @@ const LandingPage = () => {
                     <nav className="nav">
                         <ul className="nav-links">
                             <li>
-                                <a href="#home" className="nav-link active">Home</a>
-                            </li>
-                            <li>
                                 <a href="#about" className="nav-link">About</a>
                             </li>
                             <li>

@@ -174,8 +174,8 @@ const EnhancementPage = () => {
                     <Link to="/" className="logo">Dechivo<span className="beta-tag">. beta</span></Link>
                     <nav className="nav">
                         <ul className="nav-links">
-                            <li><Link to="/" className="nav-link">Home</Link></li>
-                            <li><Link to="/enhance" className="nav-link active">Enhance</Link></li>
+                            <li><a href="#about" className="nav-link">About</a></li>
+                            <li><a href="#contact" className="nav-link">Contact</a></li>
                         </ul>
                     </nav>
                     {/* User Menu */}
