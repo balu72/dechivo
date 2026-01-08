@@ -1,19 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
-import mammoth from 'mammoth';
-import * as pdfjsLib from 'pdfjs-dist';
 import '../styles/LandingPage.css';
-
-// Configure PDF.js worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
 const LandingPage = () => {
     const navigate = useNavigate();
     const { isAuthenticated } = useAuth();
     const [scrolled, setScrolled] = useState(false);
-    const [selectedFile, setSelectedFile] = useState(null);
-    const [fileContent, setFileContent] = useState('');
 
     useEffect(() => {
         const handleScroll = () => {
@@ -27,75 +20,12 @@ const LandingPage = () => {
         return () => window.removeEventListener('scroll', handleScroll);
     }, [scrolled]);
 
-    const scrollToSection = (sectionId) => {
-        const element = document.getElementById(sectionId);
-        if (element) {
-            element.scrollIntoView({ behavior: 'smooth' });
-        }
-    };
-
-    const handleFileChange = async (event) => {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        setSelectedFile(file);
-        const fileExtension = file.name.split('.').pop().toLowerCase();
-
-        try {
-            let textContent = '';
-
-            if (fileExtension === 'txt') {
-                textContent = await new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onload = (e) => resolve(e.target.result);
-                    reader.onerror = reject;
-                    reader.readAsText(file);
-                });
-            } else if (fileExtension === 'pdf') {
-                const arrayBuffer = await file.arrayBuffer();
-                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-                const textPromises = [];
-
-                for (let i = 1; i <= pdf.numPages; i++) {
-                    const page = await pdf.getPage(i);
-                    const content = await page.getTextContent();
-                    const text = content.items.map(item => item.str).join(' ');
-                    textPromises.push(text);
-                }
-
-                textContent = textPromises.join('\n\n');
-            } else if (fileExtension === 'docx' || fileExtension === 'doc') {
-                const arrayBuffer = await file.arrayBuffer();
-                const result = await mammoth.extractRawText({ arrayBuffer });
-                textContent = result.value;
-            }
-
-            setFileContent(textContent);
-            console.log('File parsed successfully:', file.name);
-        } catch (error) {
-            console.error('Error parsing file:', error);
-            alert('Error reading file: ' + error.message);
-        }
-    };
-
-    const triggerFileInput = () => {
-        document.getElementById('file-input').click();
-    };
-
     const handleEnhanceClick = () => {
-        // Redirect to login if not authenticated
         if (!isAuthenticated) {
             navigate('/login');
             return;
         }
-
-        if (selectedFile && fileContent) {
-            // Navigate with file content
-            navigate('/enhance', { state: { fileContent, fileName: selectedFile.name } });
-        } else {
-            // Navigate without content
-            navigate('/enhance');
-        }
+        navigate('/enhance');
     };
 
     return (
@@ -107,12 +37,7 @@ const LandingPage = () => {
                     <nav className="nav">
                         <ul className="nav-links">
                             <li>
-                                <a href="#home" className="nav-link active" onClick={(e) => {
-                                    e.preventDefault();
-                                    scrollToSection('home');
-                                }}>
-                                    Home
-                                </a>
+                                <a href="#home" className="nav-link active">Home</a>
                             </li>
                             <li>
                                 <a href="#about" className="nav-link">About</a>
@@ -134,43 +59,61 @@ const LandingPage = () => {
                 </div>
             </header>
 
-            {/* Hero Section */}
-            <section className="hero" id="home">
-                <div className="hero-container">
-                    <div className="hero-content">
-                        <h1 className="hero-title">
-                            Enhance Your <span className="gradient-text">ICT Job Descriptions</span>
-                        </h1>
-                        <p className="hero-subtitle">
-                            Dechivo leverages the SFIA framework to create comprehensive, standardized job descriptions for ICT roles
-                        </p>
-                        <div className="hero-cta">
-                            <input
-                                type="file"
-                                id="file-input"
-                                onChange={handleFileChange}
-                                style={{ display: 'none' }}
-                                accept=".txt,.pdf,.doc,.docx,.json"
-                            />
-                            <button className="btn btn-primary btn-large" onClick={triggerFileInput}>
-                                {selectedFile ? `File: ${selectedFile.name}` : 'Load JD File'}
-                            </button>
+            {/* Hero Section - Split Layout */}
+            <section className="hero hero-split" id="home">
+                <div className="hero-container hero-container-split">
+                    {/* Left Side - Image */}
+                    <div className="hero-image-section">
+                        <img
+                            src="/hero-illustration.png"
+                            alt="SFIA Job Description Enhancement"
+                            className="hero-illustration"
+                        />
+                    </div>
+
+                    {/* Right Side - Content */}
+                    <div className="hero-content-section">
+                        <div className="hero-content">
+                            <h1 className="hero-title">
+                                Enhance Your <span className="gradient-text">ICT Job Descriptions</span>
+                            </h1>
+                            <p className="hero-subtitle">
+                                Dechivo leverages the SFIA framework to create comprehensive, standardized job descriptions for ICT roles
+                            </p>
+                            <div className="hero-features">
+                                <div className="feature-item">
+                                    <svg viewBox="0 0 24 24" fill="none" width="24" height="24">
+                                        <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                    <span>SFIA-aligned skill mapping</span>
+                                </div>
+                                <div className="feature-item">
+                                    <svg viewBox="0 0 24 24" fill="none" width="24" height="24">
+                                        <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                    <span>AI-powered enhancement</span>
+                                </div>
+                                <div className="feature-item">
+                                    <svg viewBox="0 0 24 24" fill="none" width="24" height="24">
+                                        <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                    <span>Organizational context aware</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* CTA Button - Bottom Right */}
+                        <div className="hero-cta-bottom">
                             <button
-                                className="btn btn-secondary btn-large"
+                                className="btn btn-primary btn-large btn-enhance"
                                 onClick={handleEnhanceClick}
-                                disabled={!selectedFile}
-                                style={{ opacity: selectedFile ? 1 : 0.5 }}
                             >
+                                <svg viewBox="0 0 24 24" fill="none" width="24" height="24">
+                                    <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
                                 Enhance JD
                             </button>
                         </div>
-                    </div>
-                    <div className="hero-image">
-                        <img
-                            src="/hero-illustration.png"
-                            alt="SFIA Job Description Enhancement Illustration"
-                            className="hero-illustration"
-                        />
                     </div>
                 </div>
             </section>
