@@ -218,18 +218,30 @@ export const AuthProvider = ({ children }) => {
                 throw new Error(data.error || 'Registration failed');
             }
 
-            // Store tokens and user data
-            localStorage.setItem('access_token', data.access_token);
-            localStorage.setItem('refresh_token', data.refresh_token);
-            localStorage.setItem('user', JSON.stringify(data.user));
+            // Check if email verification is required
+            if (data.requires_verification) {
+                // Don't log in - user needs to verify email first
+                return {
+                    success: true,
+                    requires_verification: true,
+                    message: data.message
+                };
+            }
 
-            setUser(data.user);
-            setAccessToken(data.access_token);
-            setRefreshToken(data.refresh_token);
+            // Old flow: Store tokens and user data (for backwards compatibility)
+            if (data.access_token) {
+                localStorage.setItem('access_token', data.access_token);
+                localStorage.setItem('refresh_token', data.refresh_token);
+                localStorage.setItem('user', JSON.stringify(data.user));
 
-            // Track signup event
-            identifyUser(data.user.id, data.user);
-            trackSignup(data.user.id, data.user.email, data.user.username);
+                setUser(data.user);
+                setAccessToken(data.access_token);
+                setRefreshToken(data.refresh_token);
+
+                // Track signup event
+                identifyUser(data.user.id, data.user);
+                trackSignup(data.user.id, data.user.email, data.user.username);
+            }
 
             return { success: true };
         } catch (error) {

@@ -321,3 +321,58 @@
         filter: blur(60px);
     }
 }
+
+/* Registration Success State */
+.registration-success {
+    text-align: center;
+    padding: 2rem 0;
+}
+
+.registration-success .success-icon {
+    margin-bottom: 1.5rem;
+}
+
+.registration-success h2 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 1rem;
+}
+
+.registration-success .success-message {
+    color: #10b981;
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+}
+
+.registration-success .success-hint {
+    color: #6b7280;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin-bottom: 2rem;
+}
+
+.registration-success .success-hint strong {
+    color: #1f2937;
+}
+
+.registration-success .success-actions {
+    margin-top: 1.5rem;
+}
+
+.registration-success .btn-login {
+    display: inline-block;
+    padding: 0.875rem 2rem;
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: white;
+    text-decoration: none;
+    border-radius: 12px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(240, 147, 251, 0.4);
+}
+
+.registration-success .btn-login:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(240, 147, 251, 0.5);
+}

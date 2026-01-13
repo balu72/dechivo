@@ -16,6 +16,9 @@ class User(db.Model):
     organization = db.Column(db.String(120))
     role = db.Column(db.String(20), default='user')  # user, admin
     is_active = db.Column(db.Boolean, default=True)
+    is_verified = db.Column(db.Boolean, default=False)  # Email verification status
+    verification_token = db.Column(db.String(100), nullable=True)  # Token for email verification
+    verification_token_expires = db.Column(db.DateTime, nullable=True)  # Token expiry time
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     last_login = db.Column(db.DateTime)
@@ -44,6 +47,7 @@ class User(db.Model):
             'organization': self.organization,
             'role': self.role,
             'is_active': self.is_active,
+            'is_verified': self.is_verified,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'last_login': self.last_login.isoformat() if self.last_login else None
         }

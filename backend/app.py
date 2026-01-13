@@ -6,11 +6,13 @@ from flask_jwt_extended import (
 )
 import os
 import logging
+import secrets
 from datetime import datetime, timedelta, timezone
 from models import db, User
 from auth import token_required, get_current_user
 from services.sfia_km_service import get_sfia_service
 from services.enhance_jd_service import get_enhancer, reset_enhancer
+from services.email_service import send_verification_email
 import time
 from analytics import (
     track_enhancement_request,
@@ -86,12 +88,19 @@ def register():
         if User.query.filter_by(username=username).first():
             return jsonify({'error': 'Username already taken'}), 400
         
-        # Create new user
+        # Generate verification token
+        verification_token = secrets.token_urlsafe(32)
+        token_expires = datetime.utcnow() + timedelta(hours=24)
+        
+        # Create new user (not verified yet)
         user = User(
             email=email,
             username=username,
             full_name=data.get('full_name'),
-            organization=data.get('organization')
+            organization=data.get('organization'),
+            is_verified=False,
+            verification_token=verification_token,
+            verification_token_expires=token_expires
         )
         user.set_password(password)
         
@@ -100,17 +109,31 @@ def register():
         
         logger.info(f"User registered successfully: {username}")
         
-        # Generate tokens (identity must be string)
-        access_token = create_access_token(identity=str(user.id))
-        refresh_token = create_refresh_token(identity=str(user.id))
+        # Send verification email
+        email_sent = send_verification_email(
+            email=email,
+            token=verification_token,
+            name=data.get('full_name') or username
+        )
         
-        return jsonify({
-            'success': True,
-            'message': 'User registered successfully',
-            'user': user.to_dict(),
-            'access_token': access_token,
-            'refresh_token': refresh_token
-        }), 201
+        if email_sent:
+            return jsonify({
+                'success': True,
+                'message': 'Registration successful! Please check your email to verify your account.',
+                'requires_verification': True
+            }), 201
+        else:
+            # Email failed but user is created - log verification URL for testing
+            frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
+            verification_url = f"{frontend_url}/verify-email?token={verification_token}"
+            logger.info(f"📧 Email sending failed. For testing, use this verification URL: {verification_url}")
+            
+            return jsonify({
+                'success': True,
+                'message': 'Registration successful! Please request a verification email.',
+                'requires_verification': True,
+                'email_sent': False
+            }), 201
     
     except Exception as e:
         db.session.rollback()
@@ -142,6 +165,14 @@ def login():
         
         if not user.is_active:
             return jsonify({'error': 'Account is deactivated'}), 403
+        
+        # Check if email is verified
+        if not user.is_verified:
+            return jsonify({
+                'error': 'Please verify your email before logging in',
+                'requires_verification': True,
+                'email': user.email
+            }), 403
         
         # Update last login
         user.last_login = datetime.now(timezone.utc)
@@ -214,6 +245,101 @@ def logout():
         'success': True,
         'message': 'Logged out successfully'
     }), 200
+
+
+@app.route('/api/auth/verify-email', methods=['POST'])
+def verify_email():
+    """Verify user email with token"""
+    logger.info("POST /api/auth/verify-email - Verification request")
+    try:
+        data = request.get_json()
+        token = data.get('token')
+        
+        if not token:
+            return jsonify({'error': 'Verification token is required'}), 400
+        
+        # Find user by token
+        user = User.query.filter_by(verification_token=token).first()
+        
+        if not user:
+            return jsonify({'error': 'Invalid verification token'}), 400
+        
+        # Check if token expired
+        if user.verification_token_expires and user.verification_token_expires < datetime.utcnow():
+            return jsonify({
+                'error': 'Verification token has expired. Please request a new one.',
+                'expired': True
+            }), 400
+        
+        # Verify user
+        user.is_verified = True
+        user.verification_token = None
+        user.verification_token_expires = None
+        db.session.commit()
+        
+        logger.info(f"User verified successfully: {user.username}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Email verified successfully! You can now log in.'
+        }), 200
+    
+    except Exception as e:
+        logger.error(f"Verification error: {str(e)}", exc_info=True)
+        return jsonify({'error': 'Verification failed'}), 500
+
+
+@app.route('/api/auth/resend-verification', methods=['POST'])
+def resend_verification():
+    """Resend verification email"""
+    logger.info("POST /api/auth/resend-verification - Resend request")
+    try:
+        data = request.get_json()
+        email = data.get('email', '').lower().strip()
+        
+        if not email:
+            return jsonify({'error': 'Email is required'}), 400
+        
+        user = User.query.filter_by(email=email).first()
+        
+        if not user:
+            # Don't reveal if email exists
+            return jsonify({
+                'success': True,
+                'message': 'If this email is registered, a verification link will be sent.'
+            }), 200
+        
+        if user.is_verified:
+            return jsonify({'error': 'Email is already verified'}), 400
+        
+        # Generate new token
+        verification_token = secrets.token_urlsafe(32)
+        token_expires = datetime.utcnow() + timedelta(hours=24)
+        
+        user.verification_token = verification_token
+        user.verification_token_expires = token_expires
+        db.session.commit()
+        
+        # Send email
+        email_sent = send_verification_email(
+            email=email,
+            token=verification_token,
+            name=user.full_name or user.username
+        )
+        
+        if email_sent:
+            return jsonify({
+                'success': True,
+                'message': 'Verification email sent! Please check your inbox.'
+            }), 200
+        else:
+            return jsonify({
+                'error': 'Failed to send verification email. Please try again.'
+            }), 500
+    
+    except Exception as e:
+        logger.error(f"Resend verification error: {str(e)}", exc_info=True)
+        return jsonify({'error': 'Failed to resend verification'}), 500
 
 # ============= PUBLIC ROUTES =============
 
