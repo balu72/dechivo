@@ -379,7 +379,7 @@ const EnhancementPage = () => {
                     <div className="input-section">
                         <div className="org-context-group">
                             <div className="section-header-row">
-                                <h4 style={{ borderBottom: 'none', paddingBottom: 0 }}>Do you have an existing JD for the role?</h4>
+                                <h4 style={{ borderBottom: 'none', paddingBottom: 0 }}>Do you have an existing JD for the role (Optional)?</h4>
                                 <div className="jd-actions">
                                     <input
                                         type="file"
