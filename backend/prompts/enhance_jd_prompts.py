@@ -184,6 +184,36 @@ def format_jd_regeneration_user_prompt(
 Competency Requirements (use these to enrich the JD, but do not mention codes or levels explicitly):
 {skills_text}
 {org_context_str}
-Rewrite this job description as a polished, professional posting. Integrate the competency expectations naturally into responsibilities and requirements. Do not include any skill codes or level numbers in your output."""
+
+Rewrite this job description as a polished, professional posting. Integrate the competency expectations naturally into responsibilities and requirements. Do not include any skill codes or level numbers in your output.
+
+Use the following structure for the enhanced job description:
+
+Role Mandate: <Job Title>
+Practice / Capability: <Function>
+Location & Work Model: <Location from context or "Flexible">
+
+Why <Organization Name>
+- Brief compelling paragraph about the organization
+
+The Impact You'll Create
+- Key outcomes and value this role delivers
+
+Your Mandate & Ownership
+- Core responsibilities and accountabilities
+
+Foundations for Success
+- Essential qualifications and experience required
+
+What Sets You Apart
+- Differentiating skills and attributes
+
+How We Work
+- Work culture and collaboration style
+
+Our Operating Principles
+- Core values and ways of working
+"""
     
     return prompt
+
