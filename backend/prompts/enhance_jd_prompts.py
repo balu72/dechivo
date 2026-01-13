@@ -142,6 +142,7 @@ def format_org_context(org_context: dict) -> str:
         'company_values': 'Company Values',
         'business_context': 'Business Context',
         'role_context': 'Role Context',
+        'role_title': 'Role Title',
         'role_type': 'Role Type',
         'role_grade': 'Role Grade/Band',
         'location': 'Location',

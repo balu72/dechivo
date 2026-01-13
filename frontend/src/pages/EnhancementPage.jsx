@@ -33,6 +33,7 @@ const EnhancementPage = () => {
         company_values: '',
         business_context: '',
         role_context: '',
+        role_title: '',
         role_type: '',
         role_grade: '',
         location: '',
@@ -240,7 +241,7 @@ const EnhancementPage = () => {
                 )}
 
                 <div className="enhance-input-container">
-                    <h1 className="page-highlight">Add role and organizational context</h1>
+                    <h1 className="page-highlight">Tell us about the company & role</h1>
 
                     {/* Organizational Context Section */}
                     <div className="input-section">
@@ -296,6 +297,15 @@ const EnhancementPage = () => {
                             <div className="org-context-group">
                                 <h4>Role Details</h4>
                                 <div className="form-field">
+                                    <label>Role Title</label>
+                                    <input
+                                        type="text"
+                                        placeholder="e.g., Senior Software Engineer"
+                                        value={orgContext.role_title}
+                                        onChange={(e) => handleOrgContextChange('role_title', e.target.value)}
+                                    />
+                                </div>
+                                <div className="form-field">
                                     <label>Role Type</label>
                                     <select
                                         value={orgContext.role_type}
@@ -327,6 +337,11 @@ const EnhancementPage = () => {
                                         onChange={(e) => handleOrgContextChange('reporting_to', e.target.value)}
                                     />
                                 </div>
+                            </div>
+
+                            {/* Work Environment */}
+                            <div className="org-context-group">
+                                <h4>Work Environment</h4>
                                 <div className="form-field">
                                     <label>Location</label>
                                     <input
@@ -337,12 +352,12 @@ const EnhancementPage = () => {
                                     />
                                 </div>
                                 <div className="form-field">
-                                    <label>Work Environment</label>
+                                    <label>Work Model</label>
                                     <select
                                         value={orgContext.work_environment}
                                         onChange={(e) => handleOrgContextChange('work_environment', e.target.value)}
                                     >
-                                        <option value="">Select environment...</option>
+                                        <option value="">Select model...</option>
                                         <option value="Onsite">Onsite</option>
                                         <option value="Remote">Remote</option>
                                         <option value="Hybrid">Hybrid</option>
@@ -355,43 +370,40 @@ const EnhancementPage = () => {
 
                     {/* Job Description Input Section */}
                     <div className="input-section">
-                        <div className="section-header-row">
-                            <h2 className="section-title">
-                                <svg viewBox="0 0 24 24" fill="none" width="24" height="24">
-                                    <path d="M9 12H15M9 16H15M17 21H7C5.89543 21 5 20.1046 5 19V5C5 3.89543 5.89543 3 7 3H12.5858C12.851 3 13.1054 3.10536 13.2929 3.29289L18.7071 8.70711C18.8946 8.89464 19 9.149 19 9.41421V19C19 20.1046 18.1046 21 17 21Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                </svg>
-                                Job Description
-                            </h2>
-                            <div className="jd-actions">
-                                <input
-                                    type="file"
-                                    id="jd-file-input"
-                                    className="file-input-hidden"
-                                    onChange={handleFileChange}
-                                    accept=".txt,.doc,.docx,.pdf"
-                                />
-                                <button
-                                    className="btn btn-secondary btn-icon"
-                                    onClick={triggerFileInput}
-                                    disabled={isLoading}
-                                >
-                                    <svg viewBox="0 0 24 24" fill="none" width="20" height="20">
-                                        <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15M17 8L12 3M12 3L7 8M12 3V15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                    </svg>
-                                    Load JD
-                                </button>
+                        <div className="org-context-group">
+                            <div className="section-header-row">
+                                <h4 style={{ borderBottom: 'none', paddingBottom: 0 }}>Do you have an existing JD for the role?</h4>
+                                <div className="jd-actions">
+                                    <input
+                                        type="file"
+                                        id="jd-file-input"
+                                        className="file-input-hidden"
+                                        onChange={handleFileChange}
+                                        accept=".txt,.doc,.docx,.pdf"
+                                    />
+                                    <button
+                                        className="btn btn-secondary btn-icon"
+                                        onClick={triggerFileInput}
+                                        disabled={isLoading}
+                                    >
+                                        <svg viewBox="0 0 24 24" fill="none" width="20" height="20">
+                                            <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15M17 8L12 3M12 3L7 8M12 3V15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                        </svg>
+                                        Load JD
+                                    </button>
+                                </div>
                             </div>
-                        </div>
 
-                        <textarea
-                            className="jd-textarea"
-                            placeholder="Paste your job description here, or click 'Load JD' to upload a file..."
-                            value={jobDescription}
-                            onChange={(e) => setJobDescription(e.target.value)}
-                            rows="12"
-                        />
-                        <div className="char-count">
-                            {jobDescription.length} characters
+                            <textarea
+                                className="jd-textarea"
+                                placeholder="Paste your job description here, or click 'Load JD' to upload a file..."
+                                value={jobDescription}
+                                onChange={(e) => setJobDescription(e.target.value)}
+                                rows="12"
+                            />
+                            <div className="char-count">
+                                {jobDescription.length} characters
+                            </div>
                         </div>
                     </div>
 
