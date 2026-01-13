@@ -167,6 +167,37 @@ npm run dev
 
 **Frontend runs on:** http://localhost:5173
 
+#### 5️⃣ **Email Service Setup (Brevo)**
+
+Email verification requires a Brevo (formerly Sendinblue) account:
+
+1. **Create Brevo Account:**
+   - Go to [brevo.com](https://www.brevo.com) and sign up
+   - Verify your email address
+
+2. **Get API Key:**
+   - Navigate to: Settings → SMTP & API → API Keys
+   - Click "Generate a new API key"
+   - Copy the key (starts with `xkeysib-...`)
+
+3. **Verify Sender Email:**
+   - Navigate to: Settings → Senders & IP → Senders
+   - Add and verify your sender email address
+
+4. **Configure IP Whitelist (if enabled):**
+   - Navigate to: Settings → Security → Authorized IPs
+   - Add your server's IP address (or disable IP restriction for development)
+
+5. **Add to .env:**
+   ```bash
+   BREVO_API_KEY=xkeysib-your-api-key-here
+   BREVO_SENDER_EMAIL=noreply@yourdomain.com
+   BREVO_SENDER_NAME=Dechivo
+   FRONTEND_URL=http://localhost:5173  # For verification link URLs
+   ```
+
+**Note:** For development without Brevo, the verification URL is logged to the console.
+
 ---
 
 ## 🔄 Enhancement Workflow
