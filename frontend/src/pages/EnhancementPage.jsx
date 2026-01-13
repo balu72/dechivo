@@ -49,6 +49,17 @@ const EnhancementPage = () => {
         return Object.values(orgContext).filter(v => v.trim()).length;
     };
 
+    // Required fields that must be filled before enhancement
+    const requiredContextFields = [
+        'company_name', 'org_industry', 'company_description', 'company_culture',
+        'role_title', 'role_type', 'role_grade', 'reporting_to',
+        'location', 'work_environment'
+    ];
+
+    const isContextComplete = () => {
+        return requiredContextFields.every(field => orgContext[field]?.trim());
+    };
+
     const handleFileChange = async (event) => {
         const file = event.target.files[0];
         if (!file) return;
@@ -106,11 +117,7 @@ const EnhancementPage = () => {
     };
 
     const handleEnhanceJD = async () => {
-        if (!jobDescription.trim()) {
-            setStatusMessage({ type: 'error', text: 'Please enter or load a job description first' });
-            setTimeout(() => setStatusMessage(null), 3000);
-            return;
-        }
+        // JD is optional - user can enhance with just context fields
 
         setIsLoading(true);
         setStatusMessage({ type: 'info', text: 'Enhancing job description...' });
@@ -412,7 +419,7 @@ const EnhancementPage = () => {
                         <button
                             className="btn btn-primary btn-large btn-enhance-main"
                             onClick={handleEnhanceJD}
-                            disabled={isLoading || !jobDescription.trim()}
+                            disabled={isLoading || !isContextComplete()}
                         >
                             <svg viewBox="0 0 24 24" fill="none" width="24" height="24">
                                 <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />

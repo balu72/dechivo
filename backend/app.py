@@ -306,10 +306,11 @@ def enhance_jd():
         if org_context:
             logger.info(f"Org context provided: {list(org_context.keys())}")
         
-        if not job_description:
-            logger.warning("Enhancement failed: No job description provided")
+        # JD is optional - can generate from context alone
+        if not job_description and not org_context:
+            logger.warning("Enhancement failed: No job description or context provided")
             return jsonify({
-                'error': 'Job description is required'
+                'error': 'Please provide either a job description or fill in the context fields'
             }), 400
         
         # Track enhancement request
