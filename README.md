@@ -13,9 +13,10 @@ A **full-stack AI-powered application** for enhancing ICT job descriptions using
 
 ### 🔐 **User Authentication & Authorization**
 - JWT-based authentication with access & refresh tokens
+- **Email verification with Brevo integration**
 - Automatic token refresh for seamless sessions
 - Secure password hashing using bcrypt
-- User registration and login system
+- User registration with email verification
 - Protected routes (frontend & backend)
 - User profile management with dropdown menu
 - Token expiration (1 hour for access, 30 days for refresh)
@@ -76,6 +77,7 @@ dechivo/
 │   ├── services/
 │   │   ├── enhance_jd_service.py    # LangGraph JD enhancement workflow
 │   │   ├── sfia_km_service.py       # SFIA knowledge graph SPARQL service
+│   │   ├── email_service.py         # Brevo email service for verification
 │   │   └── __init__.py
 │   ├── prompts/
 │   │   ├── enhance_jd_prompts.py    # LLM prompts (centralized)
@@ -205,11 +207,20 @@ GET /api/health/kg
 ### **Authentication Endpoints**
 
 ```bash
-# Register
+# Register (sends verification email)
 POST /api/auth/register
 { "email": "user@example.com", "username": "user", "password": "pass123", "full_name": "User Name" }
+# Response: { "success": true, "message": "Please check your email...", "requires_verification": true }
 
-# Login
+# Verify Email (from email link)
+POST /api/auth/verify-email
+{ "token": "verification-token-from-email-link" }
+
+# Resend Verification Email
+POST /api/auth/resend-verification
+{ "email": "user@example.com" }
+
+# Login (requires verified email)
 POST /api/auth/login
 { "email_or_username": "user@example.com", "password": "pass123" }
 
@@ -285,6 +296,14 @@ OPENAI_MODEL=gpt-4o-mini
 # Ollama Configuration (optional, for local development)
 # OLLAMA_URL=http://localhost:11434
 # OLLAMA_MODEL=llama3:latest
+
+# Email Configuration (Brevo - for email verification)
+BREVO_API_KEY=your-brevo-api-key-here
+BREVO_SENDER_EMAIL=noreply@yourdomain.com
+BREVO_SENDER_NAME=Dechivo
+
+# Frontend URL (for verification email links)
+FRONTEND_URL=http://localhost:5173
 ```
 
 ---
@@ -387,7 +406,7 @@ sudo systemctl reload nginx
 - [ ] Add API documentation (Swagger/OpenAPI)
 
 ### Future Features 🔮
-- [ ] Email verification for new users
+- [x] ~~Email verification for new users~~ ✅ Implemented with Brevo
 - [ ] Password reset functionality
 - [ ] Save enhanced JDs to user account
 - [ ] Job description history and versioning
