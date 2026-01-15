@@ -72,7 +72,8 @@ def format_org_context(org_context: dict) -> str:
         'role_grade': 'Role Grade/Band',
         'location': 'Location',
         'work_environment': 'Work Environment',
-        'reporting_to': 'Reports To'
+        'reporting_to': 'Reports To',
+        'additional_context': 'Additional Context'
     }
     
     for key, label in field_labels.items():
@@ -102,6 +103,7 @@ def format_jd_creation_user_prompt(org_context: dict) -> str:
     company_name = org_context.get('company_name', 'the organization')
     key_skills = org_context.get('role_context', '')
     experience = org_context.get('business_context', '')
+    additional_context = org_context.get('additional_context', '').strip()
     
     skills_section = ""
     if key_skills:
@@ -109,12 +111,18 @@ def format_jd_creation_user_prompt(org_context: dict) -> str:
     if experience:
         skills_section += f"\nExperience Level: {experience}"
     
+    # Add additional context if provided
+    additional_info = ""
+    if additional_context:
+        additional_info = f"\n--- Additional Context from Hiring Manager ---\n{additional_context}\n"
+    
     prompt = f"""Create a complete, professional job description for the following role:
 
 Role: {role_title}
 Company: {company_name}
 {org_context_str}
 {skills_section}
+{additional_info}
 
 Generate a detailed job description using this structure:
 

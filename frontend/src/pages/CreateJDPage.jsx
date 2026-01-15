@@ -27,7 +27,8 @@ const CreateJDPage = () => {
         role_grade: '',
         location: '',
         work_environment: '',
-        reporting_to: ''
+        reporting_to: '',
+        additional_context: ''
     });
 
     const handleOrgContextChange = (field, value) => {
@@ -288,6 +289,20 @@ const CreateJDPage = () => {
                                             <option value="Flexible">Flexible</option>
                                         </select>
                                     </div>
+                                </div>
+                            </div>
+
+                            {/* Additional Context */}
+                            <div className="org-context-group" style={{ gridColumn: '1 / -1' }}>
+                                <h4>Additional Context (optional)</h4>
+                                <div className="form-field">
+
+                                    <textarea
+                                        placeholder="Enter any additional details, requirements, or context that would help create a better job description..."
+                                        value={orgContext.additional_context}
+                                        onChange={(e) => handleOrgContextChange('additional_context', e.target.value)}
+                                        rows="4"
+                                    />
                                 </div>
                             </div>
                         </div>
