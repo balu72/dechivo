@@ -106,11 +106,13 @@ const LandingPage = () => {
                     <div className="hero-content-section">
                         <div className="hero-content">
                             <h1 className="hero-title">
-                                Enhance Your <span className="gradient-text">ICT Job Descriptions</span>
+                                <span className="gradient-text">Your JD, Elevated</span>
                             </h1>
-                            <p className="hero-subtitle">
-                                Dechivo leverages the SFIA framework to create comprehensive, standardized job descriptions for ICT roles
-                            </p>
+                            <ul className="hero-value-props">
+                                <li>Create from Role Context</li>
+                                <li>Enhance with SFIA Skills</li>
+                            </ul>
+                            <p className="hero-features-title">Powered by</p>
                             <div className="hero-features">
                                 <div className="feature-item">
                                     <svg viewBox="0 0 24 24" fill="none" width="24" height="24">
@@ -142,7 +144,7 @@ const LandingPage = () => {
                                 <svg viewBox="0 0 24 24" fill="none" width="24" height="24">
                                     <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                 </svg>
-                                Enhance JD
+                                Try It Free
                             </button>
                         </div>
                     </div>
