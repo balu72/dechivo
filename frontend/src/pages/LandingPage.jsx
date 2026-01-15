@@ -26,7 +26,7 @@ const LandingPage = () => {
             navigate('/login');
             return;
         }
-        navigate('/enhance');
+        navigate('/create');
     };
 
     return (

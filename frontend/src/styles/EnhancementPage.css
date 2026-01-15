@@ -10,7 +10,7 @@
 /* Main Content */
 .enhancement-main {
     flex: 1;
-    padding: 6rem 2rem 2rem;
+    padding: 4rem 2rem 2rem;
     width: 100%;
     overflow-y: auto;
     display: flex;
@@ -23,12 +23,26 @@
     font-size: 1.75rem;
     font-weight: 700;
     text-align: center;
-    margin-bottom: 2rem;
+    margin-bottom: 1rem;
     background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
     line-height: 1.4;
+}
+
+.page-subtitle {
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 1rem;
+    margin-bottom: 2rem;
+}
+
+.validation-hint {
+    text-align: center;
+    color: #ef4444;
+    font-size: 0.875rem;
+    margin-top: 0.75rem;
 }
 
 /* Input Container */
@@ -105,6 +119,12 @@
 .enhance-action {
     display: flex;
     justify-content: center;
+    margin-top: 1rem;
+}
+
+.enhance-action-right {
+    display: flex;
+    justify-content: flex-end;
     margin-top: 1rem;
 }
 
@@ -474,6 +494,30 @@
     to {
         opacity: 1;
         transform: translateY(0);
+    }
+}
+
+/* CreateJD Page Styles */
+.create-jd-section {
+    margin-top: 0.5rem;
+}
+
+.create-jd-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.form-row-inline {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+@media (max-width: 768px) {
+    .form-row-inline {
+        grid-template-columns: 1fr;
+        gap: 0.875rem;
     }
 }
 

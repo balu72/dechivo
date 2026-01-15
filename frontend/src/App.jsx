@@ -5,8 +5,8 @@ import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import VerifyEmailPage from './pages/VerifyEmailPage'
-import EnhancementPage from './pages/EnhancementPage'
-import ResultsPage from './pages/ResultsPage'
+import CreateJDPage from './pages/CreateJDPage'
+import EnhanceJDPage from './pages/EnhanceJDPage'
 
 function App() {
   return (
@@ -18,18 +18,18 @@ function App() {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route
-            path="/enhance"
+            path="/create"
             element={
               <ProtectedRoute>
-                <EnhancementPage />
+                <CreateJDPage />
               </ProtectedRoute>
             }
           />
           <Route
-            path="/results"
+            path="/enhance"
             element={
               <ProtectedRoute>
-                <ResultsPage />
+                <EnhanceJDPage />
               </ProtectedRoute>
             }
           />

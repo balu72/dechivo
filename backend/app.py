@@ -11,7 +11,7 @@ from datetime import datetime, timedelta, timezone
 from models import db, User
 from auth import token_required, get_current_user
 from services.sfia_km_service import get_sfia_service
-from services.enhance_jd_service import get_enhancer, reset_enhancer
+from services.jd_services import get_enhancer, reset_enhancer, create_jd as create_jd_service, enhance_jd as enhance_jd_service
 from services.email_service import send_verification_email
 import time
 from analytics import (
@@ -395,9 +395,103 @@ def kg_health_check():
 
 # ============= PROTECTED ROUTES =============
 
+@app.route('/api/create-jd', methods=['POST'])
+@jwt_required()
+def create_jd_endpoint():
+    """
+    Endpoint to create a job description from organizational context only.
+    This generates a new JD without requiring an existing one.
+    
+    Request body:
+        org_context: dict - Organizational context including:
+            - company_name: Name of the company
+            - company_description: Brief description of the company
+            - role_title: Title of the role
+            - role_type: Type of role (permanent, contract, etc.)
+            - role_grade: Grade/band of the role
+            - reporting_to: Reporting manager/title
+            - location: Work location
+            - work_environment: Work environment (remote, hybrid, onsite)
+            - role_context: Key skills (optional)
+            - business_context: Experience level (optional)
+    """
+    logger.info("POST /api/create-jd - Create JD request received")
+    try:
+        current_user_id = get_jwt_identity()
+        user = db.session.get(User, int(current_user_id))
+        
+        data = request.get_json()
+        org_context = data.get('org_context', {})
+        
+        logger.info(f"JD creation requested by user: {user.username}")
+        logger.info(f"Org context provided: {list(org_context.keys())}")
+        
+        # Validate required fields
+        required_fields = ['company_name', 'company_description', 'role_title', 
+                          'role_type', 'role_grade', 'reporting_to', 
+                          'location', 'work_environment']
+        
+        missing_fields = [f for f in required_fields if not org_context.get(f)]
+        if missing_fields:
+            logger.warning(f"Create JD failed: Missing fields: {missing_fields}")
+            return jsonify({
+                'error': f'Missing required fields: {", ".join(missing_fields)}'
+            }), 400
+        
+        # Track creation request
+        start_time = time.time()
+        track_enhancement_request(
+            user_id=str(current_user_id),
+            jd_length=0,
+            has_org_context=True
+        )
+        
+        # Use the create_jd API function
+        result = create_jd_service(org_context)
+        
+        if not result.get('success') or not result.get('job_description'):
+            logger.error("Create JD failed: No job description generated")
+            return jsonify({
+                'error': result.get('error') or 'Failed to generate job description. Please try again.'
+            }), 500
+        
+        # Track success
+        duration_ms = int((time.time() - start_time) * 1000)
+        track_enhancement_success(
+            user_id=str(current_user_id),
+            skills_count=len(result.get('skills', [])),
+            duration_ms=duration_ms,
+            llm_provider='openai',
+            kg_connected=True
+        )
+        
+        logger.info(f"JD created successfully for role: {org_context.get('role_title')}")
+        
+        return jsonify({
+            'success': True,
+            'job_description': result.get('job_description'),
+            'skills': result.get('skills', []),
+            'extracted_keywords': result.get('extracted_keywords', [])
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Create JD error: {str(e)}", exc_info=True)
+        track_enhancement_failure(
+            user_id=str(current_user_id) if 'current_user_id' in locals() else 'unknown',
+            error=str(e)
+        )
+        track_api_error(
+            user_id=str(current_user_id) if 'current_user_id' in locals() else 'unknown',
+            endpoint='/api/create-jd',
+            error=str(e)
+        )
+        return jsonify({
+            'error': f'Error creating job description: {str(e)}'
+        }), 500
+
 @app.route('/api/enhance-jd', methods=['POST'])
 @jwt_required()
-def enhance_jd():
+def enhance_jd_endpoint():
     """
     Endpoint to enhance job descriptions using SFIA framework (Protected)
     Uses Knowledge Graph for skill mapping when available

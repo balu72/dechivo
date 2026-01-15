@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
-import '../styles/ResultsPage.css';
+import '../styles/EnhanceJDPage.css';
 import '../styles/LandingPage.css';
 import {
     trackEnhancementCompleted,
     trackDownload
 } from '../analytics';
 
-const ResultsPage = () => {
+const EnhanceJDPage = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const { user, logout } = useAuth();
@@ -23,22 +23,24 @@ const ResultsPage = () => {
         if (location.state?.enhancedJD) {
             setEnhancedJD(location.state.enhancedJD);
             setResultData({
-                originalJD: location.state.originalJD,
-                skillsCount: location.state.skillsCount,
-                skills: location.state.skills,
-                extractedKeywords: location.state.extractedKeywords,
-                kgConnected: location.state.kgConnected,
-                processingTime: location.state.processingTime,
-                orgContext: location.state.orgContext
+                originalJD: location.state.originalJD || '',
+                skillsCount: location.state.skillsCount || location.state.skills?.length || 0,
+                skills: location.state.skills || [],
+                extractedKeywords: location.state.extractedKeywords || [],
+                kgConnected: location.state.kgConnected ?? true,
+                processingTime: location.state.processingTime || 0,
+                orgContext: location.state.orgContext || {}
             });
 
-            // Track enhancement completed
-            const duration = location.state.processingTime / 1000;
-            const filledCount = Object.values(location.state.orgContext || {}).filter(v => v && v.trim()).length;
-            trackEnhancementCompleted(location.state.skillsCount || 0, duration, filledCount);
+            // Track enhancement completed (only if we have processingTime)
+            if (location.state.processingTime) {
+                const duration = location.state.processingTime / 1000;
+                const filledCount = Object.values(location.state.orgContext || {}).filter(v => v && v.trim()).length;
+                trackEnhancementCompleted(location.state.skillsCount || 0, duration, filledCount);
+            }
         } else {
-            // No data, redirect back to enhance page
-            navigate('/enhance');
+            // No data, redirect back to create page
+            navigate('/create');
         }
     }, [location.state, navigate]);
 
@@ -61,7 +63,7 @@ const ResultsPage = () => {
     };
 
     const handleEnhanceAnother = () => {
-        navigate('/enhance');
+        navigate('/create');
     };
 
     const handleEdit = () => {
@@ -150,7 +152,7 @@ const ResultsPage = () => {
                                 <svg viewBox="0 0 24 24" fill="none" width="20" height="20">
                                     <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                 </svg>
-                                Enhanced Job Description
+                                New Job Description
                             </label>
                             <div className="results-actions">
                                 <button
@@ -190,7 +192,7 @@ const ResultsPage = () => {
                                     <svg viewBox="0 0 24 24" fill="none" width="20" height="20">
                                         <path d="M12 4V20M4 12H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                     </svg>
-                                    Enhance Another
+                                    Create Another
                                 </button>
                             </div>
                         </div>
@@ -219,4 +221,4 @@ const ResultsPage = () => {
     );
 };
 
-export default ResultsPage;
+export default EnhanceJDPage;

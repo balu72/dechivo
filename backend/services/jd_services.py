@@ -32,6 +32,10 @@ from prompts.enhance_jd_prompts import (
     format_jd_regeneration_user_prompt,
     format_skills_detailed
 )
+from prompts.create_jd_prompts import (
+    get_jd_creation_system_prompt,
+    format_jd_creation_user_prompt
+)
 
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -319,6 +323,7 @@ class JobDescriptionEnhancer:
     def regenerate_jd_node(self, state: EnhancementState) -> EnhancementState:
         """
         Node 4: Regenerate job description incorporating SFIA skills
+        Or create JD from scratch if no existing JD provided
         
         Args:
             state: Current workflow state
@@ -332,6 +337,31 @@ class JobDescriptionEnhancer:
         enhanced_skills = state["enhanced_skills"]
         org_context = state.get("org_context", {})
         
+        # If no existing JD and we have org_context, CREATE a new JD from scratch
+        if not job_description.strip() and org_context:
+            logger.info("No existing JD - creating from organizational context")
+            try:
+                messages = [
+                    SystemMessage(content=get_jd_creation_system_prompt()),
+                    HumanMessage(content=format_jd_creation_user_prompt(org_context))
+                ]
+                
+                response = self.llm.invoke(messages)
+                created_jd = response.content.strip()
+                
+                logger.info(f"Created JD from context: {len(created_jd)} characters")
+                
+                state["regenerated_jd"] = created_jd
+                state["messages"].append("Created JD from organizational context")
+                return state
+                
+            except Exception as e:
+                logger.error(f"Error creating JD from context: {str(e)}")
+                state["error"] = f"JD creation error: {str(e)}"
+                state["regenerated_jd"] = ""
+                return state
+        
+        # If no SFIA skills but we have an existing JD, return original
         if not enhanced_skills:
             logger.info("No SFIA skills to incorporate, using original JD")
             state["regenerated_jd"] = job_description
@@ -572,3 +602,150 @@ def reset_enhancer():
     """Reset the singleton enhancer instance (useful for testing)"""
     global _enhancer_instance
     _enhancer_instance = None
+
+
+# ============= PUBLIC API FUNCTIONS =============
+
+def create_jd(org_context: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Create a new job description from organizational context only.
+    
+    Args:
+        org_context: Dictionary containing organizational context:
+            - company_name: Name of the company
+            - company_description: Brief description of the company
+            - role_title: Title of the role
+            - role_type: Type of role (permanent, contract, etc.)
+            - role_grade: Grade/band of the role
+            - reporting_to: Reporting manager/title
+            - location: Work location
+            - work_environment: Work environment (remote, hybrid, onsite)
+            - role_context: Key skills (optional)
+            - business_context: Experience level (optional)
+    
+    Returns:
+        Dictionary containing:
+            - success: bool
+            - job_description: Generated JD text
+            - skills: List of SFIA skills (empty for create)
+            - extracted_keywords: List of keywords
+            - error: Error message if any
+    """
+    logger.info("=" * 60)
+    logger.info("API: create_jd called")
+    logger.info(f"Org context keys: {list(org_context.keys())}")
+    logger.info(f"Role title: {org_context.get('role_title', 'N/A')}")
+    logger.info(f"Company: {org_context.get('company_name', 'N/A')}")
+    
+    try:
+        # Initialize LLM (OpenAI primary, Ollama fallback)
+        logger.info("Step 1: Initializing LLM")
+        llm = None
+        openai_api_key = os.getenv("OPENAI_API_KEY", "").strip()
+        openai_model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+        
+        if openai_api_key and OPENAI_AVAILABLE:
+            logger.info("Attempting OpenAI initialization...")
+            try:
+                llm = ChatOpenAI(
+                    model=openai_model,
+                    api_key=openai_api_key,
+                    temperature=0.3,
+                    max_tokens=4000,
+                )
+                logger.info(f"✅ Using OpenAI LLM: {openai_model}")
+            except Exception as e:
+                logger.warning(f"⚠️ OpenAI init failed: {e}")
+        
+        # Fallback to Ollama
+        if llm is None and OLLAMA_AVAILABLE:
+            logger.info("Attempting Ollama initialization...")
+            ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11434")
+            ollama_model = os.getenv("OLLAMA_MODEL", "llama3:latest")
+            try:
+                llm = ChatOllama(
+                    model=ollama_model,
+                    base_url=ollama_url,
+                    temperature=0.3,
+                )
+                logger.info(f"✅ Using Ollama LLM: {ollama_model}")
+            except Exception as e:
+                logger.error(f"❌ Ollama init failed: {e}")
+        
+        if llm is None:
+            logger.error("❌ No LLM available!")
+            raise RuntimeError("No LLM available")
+        
+        # Create job description using LLM
+        logger.info("Step 2: Preparing prompts")
+        system_prompt = get_jd_creation_system_prompt()
+        user_prompt = format_jd_creation_user_prompt(org_context)
+        
+        logger.info(f"System prompt length: {len(system_prompt)} chars")
+        logger.info(f"User prompt length: {len(user_prompt)} chars")
+        
+        messages = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=user_prompt)
+        ]
+        
+        logger.info("Step 3: Calling LLM to create job description")
+        response = llm.invoke(messages)
+        job_description = response.content.strip()
+        
+        logger.info(f"✅ Job description created: {len(job_description)} characters")
+        logger.info(f"First 100 chars: {job_description[:100]}...")
+        
+        result = {
+            'success': True,
+            'job_description': job_description,
+            'skills': [],  # No SFIA skills for direct creation
+            'extracted_keywords': [],
+            'error': ''
+        }
+        
+        logger.info("✅ create_jd completed successfully")
+        logger.info("=" * 60)
+        return result
+        
+    except Exception as e:
+        logger.error("=" * 60)
+        logger.error(f"❌ Error in create_jd: {str(e)}", exc_info=True)
+        logger.error("=" * 60)
+        return {
+            'success': False,
+            'job_description': '',
+            'skills': [],
+            'extracted_keywords': [],
+            'error': str(e)
+        }
+
+
+def enhance_jd(job_description: str, org_context: Dict[str, Any] = None) -> Dict[str, Any]:
+    """
+    Enhance an existing job description with SFIA skills.
+    
+    Args:
+        job_description: The original job description text
+        org_context: Optional organizational context dictionary
+    
+    Returns:
+        Dictionary containing:
+            - success: bool
+            - job_description: Enhanced JD text
+            - skills: List of mapped SFIA skills with levels
+            - extracted_keywords: List of extracted keywords
+            - error: Error message if any
+    """
+    logger.info("API: enhance_jd called")
+    enhancer = get_enhancer()
+    
+    result = enhancer.enhance(job_description, org_context=org_context)
+    
+    return {
+        'success': result.get('success', False),
+        'job_description': result.get('regenerated_jd', ''),
+        'skills': result.get('skills', []),
+        'extracted_keywords': result.get('extracted_keywords', []),
+        'error': result.get('error', '')
+    }
