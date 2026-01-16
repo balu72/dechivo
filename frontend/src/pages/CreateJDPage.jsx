@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import '../styles/EnhancementPage.css';
@@ -12,6 +12,9 @@ const CreateJDPage = () => {
     const [showUserMenu, setShowUserMenu] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [statusMessage, setStatusMessage] = useState(null);
+
+    // Ref for skills input to maintain focus
+    const skillsInputRef = useRef(null);
 
     // Organizational context state
     const [orgContext, setOrgContext] = useState({
@@ -45,8 +48,12 @@ const CreateJDPage = () => {
         }
     };
 
-    const searchSkills = async (query) => {
-        if (!query || query.length < 2) {
+    const searchSkills = async (fullValue) => {
+        // Extract the last partial skill entry (after the last comma)
+        const parts = fullValue.split(',');
+        const lastPart = parts[parts.length - 1].trim();
+
+        if (!lastPart || lastPart.length < 2) {
             setSkillSuggestions([]);
             setShowSuggestions(false);
             return;
@@ -54,7 +61,7 @@ const CreateJDPage = () => {
 
         setIsSearching(true);
         try {
-            const response = await authenticatedFetch(`${API_BASE_URL}/api/search-skills?query=${encodeURIComponent(query)}&limit=10`);
+            const response = await authenticatedFetch(`${API_BASE_URL}/api/search-skills?query=${encodeURIComponent(lastPart)}&limit=10`);
             const data = await response.json();
 
             if (response.ok && data.skills) {
@@ -67,6 +74,8 @@ const CreateJDPage = () => {
             setIsSearching(false);
         }
     };
+
+
 
     const handleSkillSelect = (skillName) => {
         const currentSkills = orgContext.role_context || '';
@@ -84,9 +93,19 @@ const CreateJDPage = () => {
         // Remove duplicates
         const uniqueSkills = [...new Set(skillsArray)];
 
-        setOrgContext(prev => ({ ...prev, role_context: uniqueSkills.join(', ') }));
+        // Add comma and space after the skill for easy continuation
+        const newValue = uniqueSkills.join(', ') + ', ';
+
+        setOrgContext(prev => ({ ...prev, role_context: newValue }));
         setShowSuggestions(false);
         setSkillSuggestions([]);
+
+        // Refocus the input field after a short delay
+        setTimeout(() => {
+            if (skillsInputRef.current) {
+                skillsInputRef.current.focus();
+            }
+        }, 100);
     };
 
     const getFilledContextCount = () => {
@@ -299,6 +318,7 @@ const CreateJDPage = () => {
                                     <div className="form-field" style={{ position: 'relative' }}>
                                         <label>Key Skills</label>
                                         <input
+                                            ref={skillsInputRef}
                                             type="text"
                                             placeholder="e.g., Python, AWS, Agile, Leadership"
                                             value={orgContext.role_context || ''}
