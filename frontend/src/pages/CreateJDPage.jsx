@@ -353,7 +353,7 @@ const CreateJDPage = () => {
                                         <label>Location</label>
                                         <input
                                             type="text"
-                                            placeholder="e.g., London, UK"
+                                            placeholder="e.g., Bangalore, India"
                                             value={orgContext.location}
                                             onChange={(e) => handleOrgContextChange('location', e.target.value)}
                                         />
