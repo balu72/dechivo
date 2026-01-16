@@ -337,7 +337,7 @@ const CreateJDPage = () => {
                                         <label>Experience Level</label>
                                         <input
                                             type="text"
-                                            placeholder="e.g., 5+ years in software development"
+                                            placeholder="e.g., 3-4 years / 4+ years software development"
                                             value={orgContext.business_context || ''}
                                             onChange={(e) => handleOrgContextChange('business_context', e.target.value)}
                                         />
