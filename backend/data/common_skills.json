@@ -1,0 +1,369 @@
+{
+    "skills": [
+        {
+            "name": "Python",
+            "category": "Programming Languages",
+            "description": "High-level programming language for web, data, AI/ML applications"
+        },
+        {
+            "name": "Java",
+            "category": "Programming Languages",
+            "description": "Object-oriented programming language for enterprise applications"
+        },
+        {
+            "name": "JavaScript",
+            "category": "Programming Languages",
+            "description": "Programming language for web development and frontend applications"
+        },
+        {
+            "name": "TypeScript",
+            "category": "Programming Languages",
+            "description": "Typed superset of JavaScript for scalable applications"
+        },
+        {
+            "name": "C++",
+            "category": "Programming Languages",
+            "description": "High-performance programming language for system software"
+        },
+        {
+            "name": "C#",
+            "category": "Programming Languages",
+            "description": "Microsoft's object-oriented programming language"
+        },
+        {
+            "name": "Go",
+            "category": "Programming Languages",
+            "description": "Modern programming language for cloud and distributed systems"
+        },
+        {
+            "name": "Rust",
+            "category": "Programming Languages",
+            "description": "Systems programming language focused on safety and performance"
+        },
+        {
+            "name": "Ruby",
+            "category": "Programming Languages",
+            "description": "Dynamic programming language for web development"
+        },
+        {
+            "name": "PHP",
+            "category": "Programming Languages",
+            "description": "Server-side scripting language for web development"
+        },
+        {
+            "name": "Swift",
+            "category": "Programming Languages",
+            "description": "Apple's programming language for iOS and macOS development"
+        },
+        {
+            "name": "Kotlin",
+            "category": "Programming Languages",
+            "description": "Modern programming language for Android development"
+        },
+        {
+            "name": "SQL",
+            "category": "Programming Languages",
+            "description": "Language for managing and querying relational databases"
+        },
+        {
+            "name": "R",
+            "category": "Programming Languages",
+            "description": "Programming language for statistical computing and data analysis"
+        },
+        {
+            "name": "React",
+            "category": "Frontend Frameworks",
+            "description": "JavaScript library for building user interfaces"
+        },
+        {
+            "name": "Angular",
+            "category": "Frontend Frameworks",
+            "description": "TypeScript-based web application framework"
+        },
+        {
+            "name": "Vue.js",
+            "category": "Frontend Frameworks",
+            "description": "Progressive JavaScript framework for building UIs"
+        },
+        {
+            "name": "Next.js",
+            "category": "Frontend Frameworks",
+            "description": "React framework for production-grade applications"
+        },
+        {
+            "name": "Node.js",
+            "category": "Backend Frameworks",
+            "description": "JavaScript runtime for server-side applications"
+        },
+        {
+            "name": "Django",
+            "category": "Backend Frameworks",
+            "description": "High-level Python web framework"
+        },
+        {
+            "name": "Flask",
+            "category": "Backend Frameworks",
+            "description": "Lightweight Python web framework"
+        },
+        {
+            "name": "Spring Boot",
+            "category": "Backend Frameworks",
+            "description": "Java framework for building production-ready applications"
+        },
+        {
+            "name": "AWS",
+            "category": "Cloud Platforms",
+            "description": "Amazon Web Services cloud computing platform"
+        },
+        {
+            "name": "Azure",
+            "category": "Cloud Platforms",
+            "description": "Microsoft's cloud computing platform"
+        },
+        {
+            "name": "Google Cloud Platform",
+            "category": "Cloud Platforms",
+            "description": "Google's suite of cloud computing services"
+        },
+        {
+            "name": "Docker",
+            "category": "DevOps Tools",
+            "description": "Platform for developing, shipping, and running applications in containers"
+        },
+        {
+            "name": "Kubernetes",
+            "category": "DevOps Tools",
+            "description": "Container orchestration platform for automating deployment"
+        },
+        {
+            "name": "Terraform",
+            "category": "DevOps Tools",
+            "description": "Infrastructure as code tool for building and managing infrastructure"
+        },
+        {
+            "name": "Jenkins",
+            "category": "DevOps Tools",
+            "description": "Automation server for continuous integration and delivery"
+        },
+        {
+            "name": "GitLab CI",
+            "category": "DevOps Tools",
+            "description": "Continuous integration and deployment tool"
+        },
+        {
+            "name": "GitHub Actions",
+            "category": "DevOps Tools",
+            "description": "CI/CD platform integrated with GitHub"
+        },
+        {
+            "name": "Machine Learning",
+            "category": "Data & AI",
+            "description": "AI technique for building systems that learn from data"
+        },
+        {
+            "name": "Deep Learning",
+            "category": "Data & AI",
+            "description": "ML technique using neural networks with multiple layers"
+        },
+        {
+            "name": "Natural Language Processing",
+            "category": "Data & AI",
+            "description": "AI for understanding and processing human language"
+        },
+        {
+            "name": "Computer Vision",
+            "category": "Data & AI",
+            "description": "AI for interpreting and understanding visual information"
+        },
+        {
+            "name": "TensorFlow",
+            "category": "Data & AI",
+            "description": "Open-source machine learning framework"
+        },
+        {
+            "name": "PyTorch",
+            "category": "Data & AI",
+            "description": "Machine learning framework for deep learning applications"
+        },
+        {
+            "name": "Data Analysis",
+            "category": "Data & AI",
+            "description": "Process of inspecting and modeling data to discover insights"
+        },
+        {
+            "name": "Big Data",
+            "category": "Data & AI",
+            "description": "Large and complex datasets requiring specialized processing"
+        },
+        {
+            "name": "Apache Spark",
+            "category": "Data & AI",
+            "description": "Unified analytics engine for big data processing"
+        },
+        {
+            "name": "MongoDB",
+            "category": "Databases",
+            "description": "NoSQL document database for modern applications"
+        },
+        {
+            "name": "PostgreSQL",
+            "category": "Databases",
+            "description": "Advanced open-source relational database"
+        },
+        {
+            "name": "MySQL",
+            "category": "Databases",
+            "description": "Popular open-source relational database"
+        },
+        {
+            "name": "Redis",
+            "category": "Databases",
+            "description": "In-memory data structure store for caching and messaging"
+        },
+        {
+            "name": "Agile",
+            "category": "Methodologies",
+            "description": "Iterative approach to project management and software development"
+        },
+        {
+            "name": "Scrum",
+            "category": "Methodologies",
+            "description": "Agile framework for managing complex projects"
+        },
+        {
+            "name": "Kanban",
+            "category": "Methodologies",
+            "description": "Visual workflow management method"
+        },
+        {
+            "name": "DevOps",
+            "category": "Methodologies",
+            "description": "Practices combining software development and IT operations"
+        },
+        {
+            "name": "CI/CD",
+            "category": "Methodologies",
+            "description": "Continuous integration and continuous delivery practices"
+        },
+        {
+            "name": "Microservices",
+            "category": "Methodologies",
+            "description": "Architectural approach for building distributed applications"
+        },
+        {
+            "name": "Leadership",
+            "category": "Soft Skills",
+            "description": "Ability to guide and motivate teams toward goals"
+        },
+        {
+            "name": "Team Management",
+            "category": "Soft Skills",
+            "description": "Skills for organizing and leading team activities"
+        },
+        {
+            "name": "Communication",
+            "category": "Soft Skills",
+            "description": "Effective exchange of information and ideas"
+        },
+        {
+            "name": "Problem Solving",
+            "category": "Soft Skills",
+            "description": "Ability to identify and resolve issues effectively"
+        },
+        {
+            "name": "Critical Thinking",
+            "category": "Soft Skills",
+            "description": "Objective analysis and evaluation of information"
+        },
+        {
+            "name": "Project Management",
+            "category": "Soft Skills",
+            "description": "Planning and executing projects to achieve objectives"
+        },
+        {
+            "name": "Stakeholder Management",
+            "category": "Soft Skills",
+            "description": "Managing relationships with project stakeholders"
+        },
+        {
+            "name": "Strategic Thinking",
+            "category": "Soft Skills",
+            "description": "Ability to plan and think long-term"
+        },
+        {
+            "name": "Collaboration",
+            "category": "Soft Skills",
+            "description": "Working effectively with others toward common goals"
+        },
+        {
+            "name": "Mentoring",
+            "category": "Soft Skills",
+            "description": "Guiding and developing others' skills and careers"
+        },
+        {
+            "name": "Change Management",
+            "category": "Soft Skills",
+            "description": "Managing organizational change and transitions"
+        },
+        {
+            "name": "Innovation",
+            "category": "Soft Skills",
+            "description": "Creating new ideas and approaches to problems"
+        },
+        {
+            "name": "Adaptability",
+            "category": "Soft Skills",
+            "description": "Flexibility in changing circumstances"
+        },
+        {
+            "name": "Git",
+            "category": "Tools",
+            "description": "Distributed version control system"
+        },
+        {
+            "name": "Jira",
+            "category": "Tools",
+            "description": "Project management and issue tracking tool"
+        },
+        {
+            "name": "Confluence",
+            "category": "Tools",
+            "description": "Collaboration and documentation platform"
+        },
+        {
+            "name": "Tableau",
+            "category": "Tools",
+            "description": "Business intelligence and data visualization platform"
+        },
+        {
+            "name": "Power BI",
+            "category": "Tools",
+            "description": "Microsoft's business analytics service"
+        },
+        {
+            "name": "Salesforce",
+            "category": "Tools",
+            "description": "Customer relationship management platform"
+        },
+        {
+            "name": "Cybersecurity",
+            "category": "Security",
+            "description": "Practice of protecting systems and data from threats"
+        },
+        {
+            "name": "Application Security",
+            "category": "Security",
+            "description": "Securing software applications from vulnerabilities"
+        },
+        {
+            "name": "Network Security",
+            "category": "Security",
+            "description": "Protecting network infrastructure from threats"
+        },
+        {
+            "name": "Cloud Security",
+            "category": "Security",
+            "description": "Security practices for cloud computing environments"
+        }
+    ]
+}

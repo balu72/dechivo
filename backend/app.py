@@ -620,6 +620,124 @@ def enhance_jd_endpoint():
             'error': str(e)
         }), 500
 
+@app.route('/api/search-skills', methods=['GET'])
+@jwt_required()
+def search_skills_endpoint():
+    """
+    Endpoint to search skills for autocomplete (Protected)
+    Searches both common skills and SFIA framework skills
+    
+    Query params:
+        query: Search keyword (required)
+        limit: Maximum number of results (optional, default 10)
+    """
+    logger.info("GET /api/search-skills - Skill search request received")
+    try:
+        current_user_id = get_jwt_identity()
+        query = request.args.get('query', '').strip().lower()
+        limit = int(request.args.get('limit', 10))
+        
+        if not query:
+            return jsonify({'error': 'Query parameter is required'}), 400
+        
+        if len(query) < 2:
+            return jsonify({'skills': []}), 200
+        
+        logger.info(f"Searching skills with query: '{query}', limit: {limit}")
+        
+        all_results = []
+        
+        # 1. Search common skills from JSON file
+        try:
+            import json
+            common_skills_path = os.path.join(os.path.dirname(__file__), 'data', 'common_skills.json')
+            if os.path.exists(common_skills_path):
+                with open(common_skills_path, 'r') as f:
+                    common_skills_data = json.load(f)
+                    
+                for skill in common_skills_data.get('skills', []):
+                    skill_name = skill['name'].lower()
+                    skill_desc = skill.get('description', '').lower()
+                    skill_category = skill.get('category', '').lower()
+                    
+                    # Check if query matches name, description, or category
+                    if (query in skill_name or 
+                        query in skill_desc or 
+                        query in skill_category):
+                        
+                        # Calculate relevance score
+                        score = 0
+                        if skill_name.startswith(query):
+                            score = 100  # Exact start match
+                        elif query == skill_name:
+                            score = 95  # Exact match
+                        elif query in skill_name:
+                            score = 80  # Partial name match
+                        elif query in skill_category:
+                            score = 60  # Category match
+                        else:
+                            score = 40  # Description match
+                        
+                        all_results.append({
+                            'code': '',
+                            'name': skill['name'],
+                            'description': skill.get('description', ''),
+                            'category': skill.get('category', ''),
+                            'source': 'common',
+                            'score': score
+                        })
+        except Exception as e:
+            logger.warning(f"Error loading common skills: {e}")
+        
+        # 2. Search SFIA Knowledge Graph
+        try:
+            sfia_service = get_sfia_service()
+            if sfia_service.is_connected():
+                sfia_skills = sfia_service.search_skills(query, limit=limit)
+                
+                for skill in sfia_skills:
+                    all_results.append({
+                        'code': skill.get('code', ''),
+                        'name': skill.get('name', ''),
+                        'description': skill.get('description', '')[:100] + '...' if len(skill.get('description', '')) > 100 else skill.get('description', ''),
+                        'category': skill.get('category', ''),
+                        'source': 'sfia',
+                        'score': 50  # SFIA skills get medium priority
+                    })
+        except Exception as e:
+            logger.warning(f"Error searching SFIA: {e}")
+        
+        # 3. Sort by relevance score and remove duplicates
+        all_results.sort(key=lambda x: x['score'], reverse=True)
+        
+        # Remove duplicates (prefer common skills over SFIA for same name)
+        seen_names = set()
+        unique_results = []
+        for result in all_results:
+            name_lower = result['name'].lower()
+            if name_lower not in seen_names:
+                seen_names.add(name_lower)
+                unique_results.append(result)
+        
+        # Limit results
+        final_results = unique_results[:limit]
+        
+        # Remove score from response
+        for result in final_results:
+            result.pop('score', None)
+        
+        logger.info(f"Found {len(final_results)} matching skills ({sum(1 for r in final_results if r['source'] == 'common')} common, {sum(1 for r in final_results if r['source'] == 'sfia')} SFIA)")
+        
+        return jsonify({
+            'skills': final_results,
+            'count': len(final_results)
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error searching skills: {str(e)}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/api/upload-jd', methods=['POST'])
 @jwt_required()
 def upload_jd():

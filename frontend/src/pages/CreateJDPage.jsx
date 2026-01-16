@@ -31,8 +31,55 @@ const CreateJDPage = () => {
         additional_context: ''
     });
 
+    // Autocomplete state for skills
+    const [skillSuggestions, setSkillSuggestions] = useState([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const [isSearching, setIsSearching] = useState(false);
+
     const handleOrgContextChange = (field, value) => {
         setOrgContext(prev => ({ ...prev, [field]: value }));
+
+        // Trigger skill search for role_context field
+        if (field === 'role_context') {
+            searchSkills(value);
+        }
+    };
+
+    const searchSkills = async (query) => {
+        if (!query || query.length < 2) {
+            setSkillSuggestions([]);
+            setShowSuggestions(false);
+            return;
+        }
+
+        setIsSearching(true);
+        try {
+            const response = await authenticatedFetch(`${API_BASE_URL}/api/search-skills?query=${encodeURIComponent(query)}&limit=10`);
+            const data = await response.json();
+
+            if (response.ok && data.skills) {
+                setSkillSuggestions(data.skills);
+                setShowSuggestions(true);
+            }
+        } catch (error) {
+            console.error('Error searching skills:', error);
+        } finally {
+            setIsSearching(false);
+        }
+    };
+
+    const handleSkillSelect = (skillName) => {
+        const currentSkills = orgContext.role_context || '';
+        const skillsArray = currentSkills.split(',').map(s => s.trim()).filter(s => s);
+
+        // Add new skill if not already present
+        if (!skillsArray.includes(skillName)) {
+            skillsArray.push(skillName);
+        }
+
+        setOrgContext(prev => ({ ...prev, role_context: skillsArray.join(', ') }));
+        setShowSuggestions(false);
+        setSkillSuggestions([]);
     };
 
     const getFilledContextCount = () => {
@@ -242,14 +289,42 @@ const CreateJDPage = () => {
                             <div className="org-context-group">
                                 <h4>Skills Details</h4>
                                 <div className="form-row-inline">
-                                    <div className="form-field">
+                                    <div className="form-field" style={{ position: 'relative' }}>
                                         <label>Key Skills</label>
                                         <input
                                             type="text"
                                             placeholder="e.g., Python, AWS, Agile, Leadership"
                                             value={orgContext.role_context || ''}
                                             onChange={(e) => handleOrgContextChange('role_context', e.target.value)}
+                                            onFocus={() => {
+                                                if (skillSuggestions.length > 0) {
+                                                    setShowSuggestions(true);
+                                                }
+                                            }}
+                                            onBlur={() => {
+                                                // Delay hiding to allow click on suggestion
+                                                setTimeout(() => setShowSuggestions(false), 200);
+                                            }}
                                         />
+                                        {isSearching && (
+                                            <div style={{ position: 'absolute', right: '10px', top: '35px' }}>
+                                                <div className="loading-spinner" style={{ width: '16px', height: '16px' }}></div>
+                                            </div>
+                                        )}
+                                        {showSuggestions && skillSuggestions.length > 0 && (
+                                            <div className="autocomplete-dropdown">
+                                                {skillSuggestions.map((skill, index) => (
+                                                    <div
+                                                        key={index}
+                                                        className="autocomplete-item"
+                                                        onClick={() => handleSkillSelect(skill.name)}
+                                                    >
+                                                        <div className="autocomplete-name">{skill.name}</div>
+                                                        <div className="autocomplete-desc">{skill.description}</div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="form-field">
                                         <label>Experience Level</label>
