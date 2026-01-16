@@ -72,12 +72,19 @@ const CreateJDPage = () => {
         const currentSkills = orgContext.role_context || '';
         const skillsArray = currentSkills.split(',').map(s => s.trim()).filter(s => s);
 
-        // Add new skill if not already present
-        if (!skillsArray.includes(skillName)) {
+        // Replace the last (partial) entry with the selected skill
+        if (skillsArray.length > 0) {
+            // Remove the last partial entry and add the selected skill
+            skillsArray[skillsArray.length - 1] = skillName;
+        } else {
+            // No existing skills, just add the selected one
             skillsArray.push(skillName);
         }
 
-        setOrgContext(prev => ({ ...prev, role_context: skillsArray.join(', ') }));
+        // Remove duplicates
+        const uniqueSkills = [...new Set(skillsArray)];
+
+        setOrgContext(prev => ({ ...prev, role_context: uniqueSkills.join(', ') }));
         setShowSuggestions(false);
         setSkillSuggestions([]);
     };
