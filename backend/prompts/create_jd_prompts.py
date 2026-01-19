@@ -66,7 +66,8 @@ def format_org_context(org_context: dict) -> str:
         'company_culture': 'Company Culture',
         'company_values': 'Company Values',
         'business_context': 'Experience Level',
-        'role_context': 'Key Skills',
+        'role_context': 'Mandatory Skills (Primary)',
+        'secondary_skills': 'Desired Skills (Secondary)',
         'role_title': 'Role Title',
         'role_type': 'Role Type',
         'role_grade': 'Role Grade/Band',
@@ -102,12 +103,15 @@ def format_jd_creation_user_prompt(org_context: dict) -> str:
     role_title = org_context.get('role_title', 'the role')
     company_name = org_context.get('company_name', 'the organization')
     key_skills = org_context.get('role_context', '')
+    secondary_skills = org_context.get('secondary_skills', '')
     experience = org_context.get('business_context', '')
     additional_context = org_context.get('additional_context', '').strip()
     
     skills_section = ""
     if key_skills:
-        skills_section = f"\nKey Skills to Include: {key_skills}"
+        skills_section = f"\nMandatory Skills (Primary): {key_skills}"
+    if secondary_skills:
+        skills_section += f"\nDesired Skills (Secondary): {secondary_skills}"
     if experience:
         skills_section += f"\nExperience Level: {experience}"
     
@@ -139,11 +143,13 @@ The Impact You'll Create
 Your Mandate & Ownership
 - Core responsibilities and accountabilities (5-7 bullet points)
 
-Foundations for Success
-- Essential qualifications and experience required (4-6 bullet points)
+Mandatory Skills
+- Essential qualifications, technical skills, and experience required (4-6 bullet points)
+- Incorporate the Primary Skills provided: {key_skills}
 
-What Sets You Apart
-- Differentiating skills and attributes (3-4 bullet points)
+Desired Skills
+- Differentiating skills, preferred technologies, and attributes (3-4 bullet points)
+- Incorporate the Secondary Skills provided: {secondary_skills}
 
 How We Work
 - Work culture and collaboration style
