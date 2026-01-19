@@ -715,7 +715,6 @@ def create_jd(org_context: Dict[str, Any]) -> Dict[str, Any]:
         return {
             'success': False,
             'job_description': '',
-            'skills': [],
             'extracted_keywords': [],
             'error': str(e)
         }
@@ -749,3 +748,83 @@ def enhance_jd(job_description: str, org_context: Dict[str, Any] = None) -> Dict
         'extracted_keywords': result.get('extracted_keywords', []),
         'error': result.get('error', '')
     }
+
+from prompts.interview_plan_prompts import (
+    get_interview_plan_system_prompt,
+    format_interview_plan_user_prompt
+)
+
+def create_interview_plan(job_description: str, ollama_model: str = None) -> Dict[str, Any]:
+    """
+    Create a comprehensive interview plan for a given job description.
+    
+    Args:
+        job_description: The job description text
+        ollama_model: Optional Ollama model to use
+    
+    Returns:
+        Dictionary containing interview plan and status
+    """
+    logger.info("API: create_interview_plan called")
+    
+    try:
+        # Initialize LLM (OpenAI primary, Ollama fallback)
+        llm = None
+        openai_api_key = os.getenv("OPENAI_API_KEY", "").strip()
+        openai_model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+        
+        if openai_api_key and OPENAI_AVAILABLE:
+            try:
+                llm = ChatOpenAI(
+                    model=openai_model,
+                    api_key=openai_api_key,
+                    temperature=0.3,
+                    max_tokens=4000,
+                )
+                logger.info(f"✅ Using OpenAI LLM for interview plan")
+            except Exception as e:
+                logger.warning(f"⚠️ OpenAI init failed: {e}")
+        
+        # Fallback to Ollama
+        if llm is None and OLLAMA_AVAILABLE:
+            ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11434")
+            ollama_model = ollama_model or os.getenv("OLLAMA_MODEL", "llama3:latest")
+            try:
+                llm = ChatOllama(
+                    model=ollama_model,
+                    base_url=ollama_url,
+                    temperature=0.3,
+                )
+                logger.info(f"✅ Using Ollama LLM for interview plan")
+            except Exception as e:
+                logger.error(f"❌ Ollama init failed: {e}")
+        
+        if llm is None:
+            raise RuntimeError("No LLM available for interview plan generation")
+        
+        # Get prompts
+        system_prompt = get_interview_plan_system_prompt()
+        user_prompt = format_interview_plan_user_prompt(job_description)
+        
+        messages = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=user_prompt)
+        ]
+        
+        # Call LLM
+        response = llm.invoke(messages)
+        interview_plan = response.content.strip()
+        
+        return {
+            'success': True,
+            'interview_plan': interview_plan,
+            'error': ''
+        }
+        
+    except Exception as e:
+        logger.error(f"❌ Error in create_interview_plan: {str(e)}")
+        return {
+            'success': False,
+            'interview_plan': '',
+            'error': str(e)
+        }

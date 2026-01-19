@@ -632,6 +632,45 @@ def enhance_jd_endpoint():
             'error': str(e)
         }), 500
 
+@app.route('/api/create-interview-plan', methods=['POST'])
+@jwt_required()
+def create_interview_plan_endpoint():
+    """
+    Endpoint to create an interview plan from a job description (Protected)
+    
+    Request body:
+        job_description: str - The job description text
+    """
+    logger.info("POST /api/create-interview-plan - Interview plan request received")
+    try:
+        current_user_id = get_jwt_identity()
+        data = request.get_json()
+        job_description = data.get('job_description', '')
+        
+        if not job_description:
+            return jsonify({
+                'error': 'Please provide a job description'
+            }), 400
+            
+        from services.jd_services import create_interview_plan
+        result = create_interview_plan(job_description)
+        
+        if not result.get('success'):
+            return jsonify({
+                'error': result.get('error') or 'Failed to generate interview plan'
+            }), 500
+            
+        return jsonify({
+            'success': True,
+            'interview_plan': result.get('interview_plan')
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error creating interview plan: {str(e)}", exc_info=True)
+        return jsonify({
+            'error': str(e)
+        }), 500
+
 @app.route('/api/search-skills', methods=['GET'])
 @jwt_required()
 def search_skills_endpoint():

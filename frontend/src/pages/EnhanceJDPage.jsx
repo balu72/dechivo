@@ -11,13 +11,17 @@ import {
 const EnhanceJDPage = () => {
     const location = useLocation();
     const navigate = useNavigate();
-    const { user, logout } = useAuth();
+    const { user, logout, authenticatedFetch } = useAuth();
+    const API_BASE_URL = '';
     const [enhancedJD, setEnhancedJD] = useState('');
     const [statusMessage, setStatusMessage] = useState(null);
     const [showUserMenu, setShowUserMenu] = useState(false);
     const [resultData, setResultData] = useState(null);
     // Workflow states: 'view' (initial), 'editing', 'published'
     const [workflowState, setWorkflowState] = useState('view');
+    const [interviewPlan, setInterviewPlan] = useState('');
+    const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
+    const [showInterviewPlan, setShowInterviewPlan] = useState(false);
 
     useEffect(() => {
         if (location.state?.enhancedJD) {
@@ -74,6 +78,51 @@ const EnhanceJDPage = () => {
         setWorkflowState('published');
         setStatusMessage({ type: 'success', text: 'Job description published!' });
         setTimeout(() => setStatusMessage(null), 3000);
+    };
+
+    const handleInterviewPlan = async () => {
+        if (!enhancedJD) return;
+
+        setIsGeneratingPlan(true);
+        setStatusMessage({ type: 'info', text: 'Generating comprehensive interview plan...' });
+
+        try {
+            const response = await authenticatedFetch(`${API_BASE_URL}/api/create-interview-plan`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    job_description: enhancedJD
+                }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                setInterviewPlan(data.interview_plan);
+                setShowInterviewPlan(true);
+                // Scroll to interview plan
+                setTimeout(() => {
+                    const el = document.getElementById('interview-plan-section');
+                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }, 100);
+            } else {
+                setStatusMessage({
+                    type: 'error',
+                    text: data.error || 'Failed to generate interview plan'
+                });
+            }
+        } catch (error) {
+            console.error('Interview plan error:', error);
+            setStatusMessage({
+                type: 'error',
+                text: 'Network error. Please try again.'
+            });
+        } finally {
+            setIsGeneratingPlan(false);
+            setTimeout(() => setStatusMessage(null), 3000);
+        }
     };
 
     if (!resultData) {
@@ -186,6 +235,16 @@ const EnhanceJDPage = () => {
                                     Download
                                 </button>
                                 <button
+                                    className={`btn btn-secondary btn-icon ${isGeneratingPlan ? 'loading' : ''}`}
+                                    onClick={handleInterviewPlan}
+                                    disabled={isGeneratingPlan}
+                                >
+                                    <svg viewBox="0 0 24 24" fill="none" width="20" height="20">
+                                        <path d="M8 7H16M8 11H16M8 15H13M17 21L12 18L7 21V5C7 3.89543 7.89543 3 9 3H15C16.1046 3 17 3.89543 17 5V21Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                    {isGeneratingPlan ? 'Generating...' : 'Interview Plan'}
+                                </button>
+                                <button
                                     className="btn btn-ghost btn-icon"
                                     onClick={handleEnhanceAnother}
                                 >
@@ -207,6 +266,49 @@ const EnhanceJDPage = () => {
                             {enhancedJD.length} characters
                         </div>
                     </div>
+
+                    {/* Interview Plan Section */}
+                    {showInterviewPlan && (
+                        <div id="interview-plan-section" className="enhanced-jd-section" style={{ marginTop: '2rem', borderTop: '1px solid #E5E7EB', paddingTop: '2rem' }}>
+                            <div className="section-header-row">
+                                <label className="section-label">
+                                    <svg viewBox="0 0 24 24" fill="none" width="20" height="20">
+                                        <path d="M8 7H16M8 11H16M8 15H13M17 21L12 18L7 21V5C7 3.89543 7.89543 3 9 3H15C16.1046 3 17 3.89543 17 5V21Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                    Technical Interview Plan
+                                </label>
+                                <div className="results-actions">
+                                    <button
+                                        className="btn btn-secondary btn-icon"
+                                        onClick={() => {
+                                            const blob = new Blob([interviewPlan], { type: 'text/plain' });
+                                            const url = URL.createObjectURL(blob);
+                                            const link = document.createElement('a');
+                                            link.href = url;
+                                            link.download = `interview_plan.txt`;
+                                            document.body.appendChild(link);
+                                            link.click();
+                                            document.body.removeChild(link);
+                                            URL.revokeObjectURL(url);
+                                            setStatusMessage({ type: 'success', text: 'Interview plan downloaded!' });
+                                            setTimeout(() => setStatusMessage(null), 3000);
+                                        }}
+                                    >
+                                        <svg viewBox="0 0 24 24" fill="none" width="20" height="20">
+                                            <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15M7 10L12 15M12 15L17 10M12 15V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                        </svg>
+                                        Download Plan
+                                    </button>
+                                </div>
+                            </div>
+                            <textarea
+                                className="enhanced-jd-textarea"
+                                value={interviewPlan}
+                                readOnly
+                                rows="15"
+                            />
+                        </div>
+                    )}
 
                 </div>
             </main>
