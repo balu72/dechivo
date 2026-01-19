@@ -13,8 +13,9 @@ const CreateJDPage = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [statusMessage, setStatusMessage] = useState(null);
 
-    // Ref for skills input to maintain focus
-    const skillsInputRef = useRef(null);
+    // Refs for skills inputs to maintain focus
+    const primarySkillsInputRef = useRef(null);
+    const secondarySkillsInputRef = useRef(null);
 
     // Organizational context state
     const [orgContext, setOrgContext] = useState({
@@ -34,76 +35,134 @@ const CreateJDPage = () => {
         additional_context: ''
     });
 
-    // Autocomplete state for skills
-    const [skillSuggestions, setSkillSuggestions] = useState([]);
-    const [showSuggestions, setShowSuggestions] = useState(false);
-    const [isSearching, setIsSearching] = useState(false);
+    // Autocomplete state for primary skills
+    const [primarySkillSuggestions, setPrimarySkillSuggestions] = useState([]);
+    const [showPrimarySuggestions, setShowPrimarySuggestions] = useState(false);
+    const [isPrimarySearching, setIsPrimarySearching] = useState(false);
+
+    // Autocomplete state for secondary skills
+    const [secondarySkillSuggestions, setSecondarySkillSuggestions] = useState([]);
+    const [showSecondarySuggestions, setShowSecondarySuggestions] = useState(false);
+    const [isSecondarySearching, setIsSecondarySearching] = useState(false);
+
+    // Primary and secondary skills as separate fields
+    const [primarySkills, setPrimarySkills] = useState('');
+    const [secondarySkills, setSecondarySkills] = useState('');
 
     const handleOrgContextChange = (field, value) => {
         setOrgContext(prev => ({ ...prev, [field]: value }));
-
-        // Trigger skill search for role_context field
-        if (field === 'role_context') {
-            searchSkills(value);
-        }
     };
 
-    const searchSkills = async (fullValue) => {
+    const searchPrimarySkills = async (fullValue) => {
         // Extract the last partial skill entry (after the last comma)
         const parts = fullValue.split(',');
         const lastPart = parts[parts.length - 1].trim();
 
         if (!lastPart || lastPart.length < 2) {
-            setSkillSuggestions([]);
-            setShowSuggestions(false);
+            setPrimarySkillSuggestions([]);
+            setShowPrimarySuggestions(false);
             return;
         }
 
-        setIsSearching(true);
+        setIsPrimarySearching(true);
         try {
             const response = await authenticatedFetch(`${API_BASE_URL}/api/search-skills?query=${encodeURIComponent(lastPart)}&limit=10`);
             const data = await response.json();
 
             if (response.ok && data.skills) {
-                setSkillSuggestions(data.skills);
-                setShowSuggestions(true);
+                setPrimarySkillSuggestions(data.skills);
+                setShowPrimarySuggestions(true);
             }
         } catch (error) {
-            console.error('Error searching skills:', error);
+            console.error('Error searching primary skills:', error);
         } finally {
-            setIsSearching(false);
+            setIsPrimarySearching(false);
+        }
+    };
+
+    const searchSecondarySkills = async (fullValue) => {
+        // Extract the last partial skill entry (after the last comma)
+        const parts = fullValue.split(',');
+        const lastPart = parts[parts.length - 1].trim();
+
+        if (!lastPart || lastPart.length < 2) {
+            setSecondarySkillSuggestions([]);
+            setShowSecondarySuggestions(false);
+            return;
+        }
+
+        setIsSecondarySearching(true);
+        try {
+            const response = await authenticatedFetch(`${API_BASE_URL}/api/search-skills?query=${encodeURIComponent(lastPart)}&limit=15`);
+            const data = await response.json();
+
+            if (response.ok && data.skills) {
+                // Filter out skills already selected in primary skills
+                const primarySkillsArray = primarySkills.split(',').map(s => s.trim().toLowerCase()).filter(s => s);
+                const filteredSkills = data.skills.filter(skill =>
+                    !primarySkillsArray.includes(skill.name.toLowerCase())
+                );
+
+                setSecondarySkillSuggestions(filteredSkills);
+                setShowSecondarySuggestions(true);
+            }
+        } catch (error) {
+            console.error('Error searching secondary skills:', error);
+        } finally {
+            setIsSecondarySearching(false);
         }
     };
 
 
 
-    const handleSkillSelect = (skillName) => {
-        const currentSkills = orgContext.role_context || '';
-        const skillsArray = currentSkills.split(',').map(s => s.trim()).filter(s => s);
+    const handlePrimarySkillSelect = (skillName) => {
+        const skillsArray = primarySkills.split(',').map(s => s.trim()).filter(s => s);
 
         // Replace the last (partial) entry with the selected skill
         if (skillsArray.length > 0) {
-            // Remove the last partial entry and add the selected skill
             skillsArray[skillsArray.length - 1] = skillName;
         } else {
-            // No existing skills, just add the selected one
             skillsArray.push(skillName);
         }
 
         // Remove duplicates
         const uniqueSkills = [...new Set(skillsArray)];
-
-        // Add comma and space after the skill for easy continuation
         const newValue = uniqueSkills.join(', ') + ', ';
 
-        setOrgContext(prev => ({ ...prev, role_context: newValue }));
-        setShowSuggestions(false);
-        setSkillSuggestions([]);
+        setPrimarySkills(newValue);
+        setShowPrimarySuggestions(false);
+        setPrimarySkillSuggestions([]);
 
-        // Refocus the input field after a short delay
+        // Refocus the input field
         setTimeout(() => {
-            if (skillsInputRef.current) {
-                skillsInputRef.current.focus();
+            if (primarySkillsInputRef.current) {
+                primarySkillsInputRef.current.focus();
+            }
+        }, 100);
+    };
+
+    const handleSecondarySkillSelect = (skillName) => {
+        const skillsArray = secondarySkills.split(',').map(s => s.trim()).filter(s => s);
+
+        // Replace the last (partial) entry with the selected skill
+        if (skillsArray.length > 0) {
+            skillsArray[skillsArray.length - 1] = skillName;
+        } else {
+            skillsArray.push(skillName);
+        }
+
+        // Remove duplicates
+        const uniqueSkills = [...new Set(skillsArray)];
+        const newValue = uniqueSkills.join(', ') + ', ';
+
+        setSecondarySkills(newValue);
+        setShowSecondarySuggestions(false);
+        setSecondarySkillSuggestions([]);
+
+        // Refocus the input field
+        setTimeout(() => {
+            if (secondarySkillsInputRef.current) {
+                secondarySkillsInputRef.current.focus();
             }
         }, 100);
     };
@@ -139,7 +198,11 @@ const CreateJDPage = () => {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    org_context: orgContext
+                    org_context: {
+                        ...orgContext,
+                        role_context: primarySkills, // Primary skills
+                        secondary_skills: secondarySkills // Secondary skills
+                    }
                 }),
             });
 
@@ -311,40 +374,42 @@ const CreateJDPage = () => {
                                 </div>
                             </div>
 
-                            {/* Skills Details */}
+                            {/* Skills Details - Primary Skills */}
                             <div className="org-context-group">
-                                <h4>Skills Details</h4>
+                                <h4>Primary Skills</h4>
                                 <div className="form-row-inline">
                                     <div className="form-field" style={{ position: 'relative' }}>
-                                        <label>Key Skills</label>
+                                        <label>Primary Skills (Must-have)</label>
                                         <input
-                                            ref={skillsInputRef}
+                                            ref={primarySkillsInputRef}
                                             type="text"
                                             placeholder="e.g., Python, AWS, Agile, Leadership"
-                                            value={orgContext.role_context || ''}
-                                            onChange={(e) => handleOrgContextChange('role_context', e.target.value)}
+                                            value={primarySkills}
+                                            onChange={(e) => {
+                                                setPrimarySkills(e.target.value);
+                                                searchPrimarySkills(e.target.value);
+                                            }}
                                             onFocus={() => {
-                                                if (skillSuggestions.length > 0) {
-                                                    setShowSuggestions(true);
+                                                if (primarySkillSuggestions.length > 0) {
+                                                    setShowPrimarySuggestions(true);
                                                 }
                                             }}
                                             onBlur={() => {
-                                                // Delay hiding to allow click on suggestion
-                                                setTimeout(() => setShowSuggestions(false), 200);
+                                                setTimeout(() => setShowPrimarySuggestions(false), 200);
                                             }}
                                         />
-                                        {isSearching && (
+                                        {isPrimarySearching && (
                                             <div style={{ position: 'absolute', right: '10px', top: '35px' }}>
                                                 <div className="loading-spinner" style={{ width: '16px', height: '16px' }}></div>
                                             </div>
                                         )}
-                                        {showSuggestions && skillSuggestions.length > 0 && (
+                                        {showPrimarySuggestions && primarySkillSuggestions.length > 0 && (
                                             <div className="autocomplete-dropdown">
-                                                {skillSuggestions.map((skill, index) => (
+                                                {primarySkillSuggestions.map((skill, index) => (
                                                     <div
                                                         key={index}
                                                         className="autocomplete-item"
-                                                        onClick={() => handleSkillSelect(skill.name)}
+                                                        onClick={() => handlePrimarySkillSelect(skill.name)}
                                                     >
                                                         <div className="autocomplete-name">{skill.name}</div>
                                                         <div className="autocomplete-desc">{skill.description}</div>
@@ -353,6 +418,53 @@ const CreateJDPage = () => {
                                             </div>
                                         )}
                                     </div>
+                                    <div className="form-field" style={{ position: 'relative' }}>
+                                        <label>Secondary Skills (Good-to-have)</label>
+                                        <input
+                                            ref={secondarySkillsInputRef}
+                                            type="text"
+                                            placeholder="e.g., Docker, CI/CD, Project Management"
+                                            value={secondarySkills}
+                                            onChange={(e) => {
+                                                setSecondarySkills(e.target.value);
+                                                searchSecondarySkills(e.target.value);
+                                            }}
+                                            onFocus={() => {
+                                                if (secondarySkillSuggestions.length > 0) {
+                                                    setShowSecondarySuggestions(true);
+                                                }
+                                            }}
+                                            onBlur={() => {
+                                                setTimeout(() => setShowSecondarySuggestions(false), 200);
+                                            }}
+                                        />
+                                        {isSecondarySearching && (
+                                            <div style={{ position: 'absolute', right: '10px', top: '35px' }}>
+                                                <div className="loading-spinner" style={{ width: '16px', height: '16px' }}></div>
+                                            </div>
+                                        )}
+                                        {showSecondarySuggestions && secondarySkillSuggestions.length > 0 && (
+                                            <div className="autocomplete-dropdown">
+                                                {secondarySkillSuggestions.map((skill, index) => (
+                                                    <div
+                                                        key={index}
+                                                        className="autocomplete-item"
+                                                        onClick={() => handleSecondarySkillSelect(skill.name)}
+                                                    >
+                                                        <div className="autocomplete-name">{skill.name}</div>
+                                                        <div className="autocomplete-desc">{skill.description}</div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Experience Level */}
+                            <div className="org-context-group">
+                                <h4>Experience</h4>
+                                <div className="form-row-inline">
                                     <div className="form-field">
                                         <label>Experience Level</label>
                                         <input

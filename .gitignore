@@ -1,0 +1,316 @@
+# ============================================================================
+# Dechivo .gitignore
+# ============================================================================
+
+# ============================================================================
+# Knowledge Graph Data Files (LARGE - Do not commit)
+# ============================================================================
+
+# All turtle files (source and generated)
+*.ttl
+
+# TTL directories
+data/ca_turtle/
+data/esco_turtle/
+data/onet_turtle/
+data/sg_turtle/
+data/sfia_turtle/
+data/unified-files/
+
+# Knowledge graph generated files
+knowledge-graph/analysis_report.json
+knowledge-graph/occupation_mappings.ttl
+knowledge-graph/entity_mappings.json
+knowledge-graph/*.log
+
+# Test scripts and test directory
+tests/
+
+# Archive directory (old documentation)
+docs/archive/
+knowledge-graph/archive/
+
+# ============================================================================
+# Python
+# ============================================================================
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# ============================================================================
+# Node.js / Frontend
+# ============================================================================
+
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Build outputs
+frontend/build/
+frontend/dist/
+.next/
+out/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ============================================================================
+# Database
+# ============================================================================
+
+# SQLite
+*.db
+*.sqlite
+*.sqlite3
+
+# PostgreSQL
+*.pgsql
+
+# Database dumps
+*.sql
+
+# ============================================================================
+# Docker & Fuseki
+# ============================================================================
+
+# Fuseki Docker volumes (root level only, not knowledge-graph/fuseki-data/)
+/fuseki-data/
+fuseki-logs/
+knowledge-graph/run/
+
+# Docker
+.dockerignore
+
+# ============================================================================
+# IDE & Editors
+# ============================================================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+
+# JetBrains IDEs
+.idea/
+*.iml
+*.iws
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# ============================================================================
+# Logs
+# ============================================================================
+
+# Log directory
+logs/
+
+# Application logs (if not in logs/)
+*.log
+*.log.*
+
+# ============================================================================
+# Temporary & Cache Files
+# ============================================================================
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+*.cache
+
+# OS cache
+.cache/
+
+# ============================================================================
+# Security & Secrets
+# ============================================================================
+
+# Environment variables with secrets
+*.env
+.env.*
+!.env.example
+
+# API keys and credentials
+secrets/
+*.key
+*.pem
+*.cert
+*.crt
+
+# ============================================================================
+# Build & Compiled Files
+# ============================================================================
+
+# Compiled files
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.out
+
+# ============================================================================
+# Testing
+# ============================================================================
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# ============================================================================
+# Documentation (Generated)
+# ============================================================================
+
+# Don't ignore markdown docs (we want these in git)
+# But ignore auto-generated API docs
+docs/_build/
+docs/build/
+site/
+
+# ============================================================================
+# Backup & Archive Files
+# ============================================================================
+
+# Archives
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# ============================================================================
+# Project Specific
+# ============================================================================
+
+# Analytics data
+analytics-data/
+
+# User uploads
+uploads/
+user-data/
+
+# Session storage
+sessions/
+
+# Application cache
+app-cache/
+
+# ============================================================================
+# IMPORTANT: Data Files to KEEP in Git
+# ============================================================================
+
+# Keep documentation
+!*.md
+!README.md
+!CHANGELOG.md
+
+# Keep configuration examples
+!.env.example
+!config.example.json
+
+# Keep small reference data
+!data/common_skills.json
+!data/sfia_skills.json
+
+# Keep scripts
+!knowledge-graph/scripts/*.py
+!backend/*.py
+!frontend/src/**/*.js
+!frontend/src/**/*.jsx
+!frontend/src/**/*.ts
+!frontend/src/**/*.tsx
+
+# ============================================================================
+# Summary of Large Files Excluded (Good!)
+# ============================================================================
+# - All *.ttl files (~500+ MB of source data)
+# - data/unified-files/ (~130 MB merged file)
+# - node_modules/ (varies, typically 100+ MB)
+# - Database files
+# - Build outputs
+# - Logs and temporary files
+#
+# Total space saved in repository: ~700+ MB
+# ============================================================================

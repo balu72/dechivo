@@ -1,129 +1,118 @@
-# SFIA Knowledge Graph - Jena Fuseki Setup
+# 📚 Dechivo Knowledge Graph Documentation
 
-This directory contains the Apache Jena Fuseki setup for the SFIA knowledge graph.
+Welcome to the Dechivo Knowledge Graph documentation!
 
-## Quick Start
+---
 
-### 1. Start Fuseki
+## 📖 **Main Documentation**
+
+**All KG documentation has been consolidated into one comprehensive guide:**
+
+### **[📘 COMPLETE_DOCUMENTATION.md](./COMPLETE_DOCUMENTATION.md)**
+
+This 23 KB guide contains everything you need:
+
+✅ Quick Start Guide  
+✅ Complete API Reference  
+✅ Usage Examples (Python & JavaScript)  
+✅ SPARQL Query Templates  
+✅ Architecture Overview  
+✅ Data Sources & Statistics  
+✅ Troubleshooting Guide  
+✅ Scripts Reference  
+✅ Changelog  
+
+---
+
+## 📦 **Production Data Files**
+
+### **[fuseki-data/](./fuseki-data/)**
+
+Production-ready TTL files for deployment (checked into git):
+
+- **`deduplicated_knowledge_graph.ttl`** (129 MB)
+  - Unified KG from 4 frameworks (ESCO, O*NET, Singapore, Canada)
+  - 1,726,471 triples
+  - 6,372 unique occupations
+  - 14,598+ skills
+
+- **`SFIA_9_2025-02-27.ttl`** (636 KB)
+  - SFIA v9 IT professional competencies
+  - ~10,000 triples
+  - 180 skills with 7 levels each
+
+**Usage**: Load these files into Fuseki to set up the knowledge graph.
+
+---
+
+## 📂 **Additional Resources**
+
+### **[INTEGRATION_PLAN.md](./INTEGRATION_PLAN.md)**
+- 8-phase implementation roadmap
+- Technical architecture
+- Risk management
+- Timeline estimates
+
+### **[UNIFIED_TTL_FEASIBILITY.md](./UNIFIED_TTL_FEASIBILITY.md)**
+- Feasibility analysis for unified approach
+- Performance comparisons
+- Implementation strategy
+
+### **[../data/unified-files/MERGE_DEDUP_SUMMARY.md](../data/unified-files/MERGE_DEDUP_SUMMARY.md)**
+- Detailed merge & deduplication statistics
+- Sample data structures
+- Processing results
+
+---
+
+## 🚀 **Quick Start**
+
 ```bash
-cd knowledge-graph
-docker-compose up -d
+# 1. Access Fuseki
+open http://localhost:3030
+# Login: admin / admin123
+
+# 2. Test API
+curl http://localhost:5000/api/kg/health
+
+# 3. Search occupations
+curl "http://localhost:5000/api/kg/occupations/search?q=developer"
 ```
 
-### 2. Access Fuseki Web UI
-- URL: http://localhost:3030
-- Username: `admin`
-- Password: `admin123`
+---
 
-### 3. Load SFIA Data
+## 📊 **Current Status**
 
-#### Option A: Using Web UI (Recommended)
-1. Open http://localhost:3030
-2. Click "Manage datasets"
-3. Click "Add new dataset"
-   - Dataset name: `sfia`
-   - Dataset type: `Persistent (TDB2)`
-4. Click "Create dataset"
-5. Go to "Add data" tab
-6. Select dataset: `sfia`
-7. Upload file: `../data/SFIA_9_2025-02-27.ttl`
-8. Click "Upload"
+| Metric | Value |
+|--------|-------|
+| **Status** | ✅ Production Ready |
+| **Dataset** | unified |
+| **Triples** | 1,726,471 |
+| **Occupations** | 6,372 unique |
+| **Skills** | 14,598+ |
+| **Frameworks** | 4 (CA, ESCO, O*NET, SG) |
 
-#### Option B: Using cURL
-```bash
-# Create dataset
-curl -X POST http://localhost:3030/$/datasets \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -u admin:admin123 \
-  -d "dbName=sfia&dbType=tdb2"
+---
 
-# Load data
-docker exec sfia-fuseki \
-  curl -X POST http://localhost:3030/sfia/data \
-  -H "Content-Type: text/turtle" \
-  -u admin:admin123 \
-  --data-binary @/staging/sfia.ttl
-```
+## 🛠️ **Scripts**
 
-### 4. Test SPARQL Query
-```bash
-# Count all triples
-curl -X POST http://localhost:3030/sfia/query \
-  -H "Content-Type: application/sparql-query" \
-  --data "SELECT (COUNT(*) as ?count) WHERE { ?s ?p ?o }"
-```
+All utility scripts are in `scripts/`:
 
-## SPARQL Endpoint
+- `merge_ttl.py` - Merge all TTL files  
+- `deduplicate_entities.py` - Remove duplicates  
+- `replace_fuseki_datasets.py` - Deploy to Fuseki  
+- `kg_service.py` - Python API service  
+- `sparql_queries.py` - Query templates  
+- `cleanup_intermediary_files.py` - Cleanup tools  
 
-Once the dataset is created and loaded:
-- **Query endpoint**: http://localhost:3030/sfia/query
-- **Update endpoint**: http://localhost:3030/sfia/update
-- **Data endpoint**: http://localhost:3030/sfia/data
+---
 
-## Useful Commands
+## 📞 **Support**
 
-```bash
-# Stop Fuseki
-docker-compose down
+- **Full Documentation**: [COMPLETE_DOCUMENTATION.md](./COMPLETE_DOCUMENTATION.md)
+- **API Guide**: See COMPLETE_DOCUMENTATION.md § API Reference
+- **Troubleshooting**: See COMPLETE_DOCUMENTATION.md § Troubleshooting
 
-# View logs
-docker-compose logs -f fuseki
+---
 
-# Restart Fuseki
-docker-compose restart
-
-# Remove everything (including data)
-docker-compose down -v
-```
-
-## Data Storage
-
-- Persistent data is stored in: `./fuseki-data/`
-- This directory is automatically created when Fuseki starts
-- Backup this directory to preserve your knowledge graph
-
-## Configuration
-
-Edit `docker-compose.yml` to change:
-- Port (default: 3030)
-- Admin password (default: admin123)
-- Memory allocation (default: 2GB)
-
-## Troubleshooting
-
-**Fuseki won't start:**
-```bash
-# Check if port 3030 is already in use
-lsof -i :3030
-
-# View container logs
-docker-compose logs fuseki
-```
-
-**Data not loading:**
-- Ensure the TTL file exists at `../data/SFIA_9_2025-02-27.ttl`
-- Check file permissions
-- Verify the dataset was created first
-
-## Next Steps
-
-Integrate with your Flask backend by installing SPARQLWrapper:
-```bash
-cd ../backend
-pip install SPARQLWrapper
-```
-
-Then query Fuseki from Python:
-```python
-from SPARQLWrapper import SPARQLWrapper, JSON
-
-sparql = SPARQLWrapper("http://localhost:3030/sfia/query")
-sparql.setQuery("""
-    SELECT ?s ?p ?o
-    WHERE { ?s ?p ?o }
-    LIMIT 10
-""")
-sparql.setReturnFormat(JSON)
-results = sparql.query().convert()
-print(results)
-```
+**Start Reading**: [**COMPLETE_DOCUMENTATION.md**](./COMPLETE_DOCUMENTATION.md) 📖

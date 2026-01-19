@@ -8,6 +8,11 @@ import os
 import logging
 import secrets
 from datetime import datetime, timedelta, timezone
+
+# Load environment variables from .env file
+from dotenv import load_dotenv
+load_dotenv()
+
 from models import db, User
 from auth import token_required, get_current_user
 from services.sfia_km_service import get_sfia_service
@@ -20,6 +25,9 @@ from analytics import (
     track_enhancement_failure,
     track_api_error
 )
+
+# Import Knowledge Graph blueprint
+from kg_routes import kg_bp
 
 app = Flask(__name__)
 CORS(app, 
@@ -45,6 +53,9 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # Initialize extensions
 db.init_app(app)
 jwt = JWTManager(app)
+
+# Register blueprints
+app.register_blueprint(kg_bp)
 
 # Configure logging
 logging.basicConfig(
@@ -707,10 +718,36 @@ def search_skills_endpoint():
         except Exception as e:
             logger.warning(f"Error searching SFIA: {e}")
         
-        # 3. Sort by relevance score and remove duplicates
+        # 3. Search Unified Knowledge Graph (ESCO, O*NET, Singapore, Canada)
+        try:
+            import sys
+            kg_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'knowledge-graph', 'scripts')
+            if kg_path not in sys.path:
+                sys.path.insert(0, kg_path)
+            
+            from kg_service import kg_service
+            
+            # Search skills in unified KG
+            kg_skills = kg_service.find_skills_by_keyword(query)
+            
+            for skill in kg_skills[:limit]:  # Limit KG results
+                all_results.append({
+                    'code': '',
+                    'name': skill.get('skillLabel', skill.get('label', '')),
+                    'description': skill.get('description', '')[:100] + '...' if skill.get('description', '') and len(skill.get('description', '')) > 100 else skill.get('description', ''),
+                    'category': skill.get('category', ''),
+                    'source': 'kg',  # Knowledge Graph (4 frameworks)
+                    'score': 70  # KG skills get high priority (international standards)
+                })
+            
+            logger.info(f"Found {len(kg_skills)} skills from unified KG")
+        except Exception as e:
+            logger.warning(f"Error searching unified KG: {e}")
+        
+        # 4. Sort by relevance score and remove duplicates
         all_results.sort(key=lambda x: x['score'], reverse=True)
         
-        # Remove duplicates (prefer common skills over SFIA for same name)
+        # Remove duplicates (prefer: common > KG > SFIA for same name)
         seen_names = set()
         unique_results = []
         for result in all_results:
@@ -726,11 +763,16 @@ def search_skills_endpoint():
         for result in final_results:
             result.pop('score', None)
         
-        logger.info(f"Found {len(final_results)} matching skills ({sum(1 for r in final_results if r['source'] == 'common')} common, {sum(1 for r in final_results if r['source'] == 'sfia')} SFIA)")
+        logger.info(f"Found {len(final_results)} matching skills (common: {sum(1 for r in final_results if r['source'] == 'common')}, KG: {sum(1 for r in final_results if r['source'] == 'kg')}, SFIA: {sum(1 for r in final_results if r['source'] == 'sfia')})")
         
         return jsonify({
             'skills': final_results,
-            'count': len(final_results)
+            'count': len(final_results),
+            'sources': {
+                'common': sum(1 for r in final_results if r['source'] == 'common'),
+                'kg': sum(1 for r in final_results if r['source'] == 'kg'),
+                'sfia': sum(1 for r in final_results if r['source'] == 'sfia')
+            }
         }), 200
         
     except Exception as e:
