@@ -14,11 +14,13 @@ CRITICAL INSTRUCTIONS:
 1. CREATE a detailed, engaging job description that reflects the role, company, and requirements.
 
 2. INCLUDE all standard job description sections:
-   - Role title and overview
-   - About the company
-   - Key responsibilities
-   - Required qualifications and experience
-   - Location and work model details
+   - Role Mandate and Capability
+   - Why [Company Name]
+   - The Impact You'll Create
+   - Your Mandate & Ownership (Responsibilities)
+   - Mandatory Skills
+   - Desired Skills
+   - How We Work & Operating Principles
 
 3. WRITE in an engaging, professional tone that attracts top candidates.
 

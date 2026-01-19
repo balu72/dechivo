@@ -36,11 +36,13 @@ CRITICAL INSTRUCTIONS:
 4. WRITE in an engaging, professional tone that attracts candidates.
 
 5. FOLLOW a standard job description structure:
-   - Brief role overview/introduction
-   - Key responsibilities
-   - What we're looking for (requirements/qualifications)
-   - Include company/culture context if provided
-   - Role details (location, reporting) if provided
+   - Role Mandate and Capability
+   - Why [Company Name]
+   - The Impact You'll Create
+   - Your Mandate & Ownership (Responsibilities)
+   - Mandatory Skills (Essential Skills)
+   - Desired Skills (What Sets You Apart)
+   - How We Work & Operating Principles
 
 6. OUTPUT in plain text format (not markdown). Use simple formatting:
    - Section headers in Title Case followed by a blank line
@@ -60,11 +62,13 @@ CRITICAL INSTRUCTIONS:
 1. CREATE a detailed, engaging job description that reflects the role, company, and requirements.
 
 2. INCLUDE all standard job description sections:
-   - Role title and overview
-   - About the company
-   - Key responsibilities
-   - Required qualifications and experience
-   - Location and work model details
+   - Role Mandate and Capability
+   - Why [Company Name]
+   - The Impact You'll Create
+   - Your Mandate & Ownership (Responsibilities)
+   - Mandatory Skills
+   - Desired Skills
+   - How We Work & Operating Principles
 
 3. WRITE in an engaging, professional tone that attracts top candidates.
 
