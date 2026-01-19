@@ -125,10 +125,25 @@ git log -1
 ```bash
 cd knowledge-graph/fuseki-data
 
-# Option A: Download from cloud storage (RECOMMENDED)
-# Replace with your actual cloud storage URLs
-wget "https://your-storage-url.com/deduplicated_knowledge_graph.ttl" -O deduplicated_knowledge_graph.ttl
-wget "https://your-storage-url.com/SFIA_9_2025-02-27.ttl" -O SFIA_9_2025-02-27.ttl
+# Option A: Download from Google Drive (RECOMMENDED)
+# Download unified KG (129 MB - may take 2-3 minutes)
+wget --no-check-certificate \
+  'https://drive.google.com/uc?export=download&id=1oxStLcHUjqAmWbyXJW3IZXyvDVAQ4Xbg' \
+  -O deduplicated_knowledge_graph.ttl
+
+# Download SFIA (636 KB)
+wget --no-check-certificate \
+  'https://drive.google.com/uc?export=download&id=1pb-_QLdijI6N8LXhiXeceV5tQK1AMsty' \
+  -O SFIA_9_2025-02-27.ttl
+
+# Alternative: Using curl (if wget not available)
+curl -L \
+  'https://drive.google.com/uc?export=download&id=1oxStLcHUjqAmWbyXJW3IZXyvDVAQ4Xbg' \
+  -o deduplicated_knowledge_graph.ttl
+
+curl -L \
+  'https://drive.google.com/uc?export=download&id=1pb-_QLdijI6N8LXhiXeceV5tQK1AMsty' \
+  -o SFIA_9_2025-02-27.ttl
 
 # Option B: Transfer from local machine via SCP
 # From your local machine:

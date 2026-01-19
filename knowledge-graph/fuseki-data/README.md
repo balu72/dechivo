@@ -40,23 +40,34 @@ cp ../data/sfia_turtle/SFIA_9_2025-02-27.ttl fuseki-data/
 
 ### **For Production Deployment**
 
-**Option A: Download from Cloud Storage**
+**Option A: Download from Google Drive**
 
 ```bash
-# Upload files to your preferred storage:
-# - Google Drive
-# - Dropbox
-# - AWS S3
-# - Azure Blob Storage
-# - Company file server
-
-# During deployment, download:
 cd knowledge-graph/fuseki-data/
 
-# Example with wget (replace with your URL)
-wget "YOUR_CLOUD_STORAGE_URL/deduplicated_knowledge_graph.ttl"
-wget "YOUR_CLOUD_STORAGE_URL/SFIA_9_2025-02-27.ttl"
+# Download unified KG (129 MB)
+wget --no-check-certificate \
+  'https://drive.google.com/uc?export=download&id=1oxStLcHUjqAmWbyXJW3IZXyvDVAQ4Xbg' \
+  -O deduplicated_knowledge_graph.ttl
+
+# Download SFIA (636 KB)
+wget --no-check-certificate \
+  'https://drive.google.com/uc?export=download&id=1pb-_QLdijI6N8LXhiXeceV5tQK1AMsty' \
+  -O SFIA_9_2025-02-27.ttl
+
+# Alternative: Using curl
+curl -L \
+  'https://drive.google.com/uc?export=download&id=1oxStLcHUjqAmWbyXJW3IZXyvDVAQ4Xbg' \
+  -o deduplicated_knowledge_graph.ttl
+
+curl -L \
+  'https://drive.google.com/uc?export=download&id=1pb-_QLdijI6N8LXhiXeceV5tQK1AMsty' \
+  -o SFIA_9_2025-02-27.ttl
 ```
+
+**Google Drive Links** (for manual download):
+- [deduplicated_knowledge_graph.ttl](https://drive.google.com/file/d/1oxStLcHUjqAmWbyXJW3IZXyvDVAQ4Xbg/view?usp=drive_link) (129 MB)
+- [SFIA_9_2025-02-27.ttl](https://drive.google.com/file/d/1pb-_QLdijI6N8LXhiXeceV5tQK1AMsty/view?usp=drive_link) (636 KB)
 
 **Option B: Direct Transfer (SCP/RSYNC)**
 
