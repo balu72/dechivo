@@ -31,7 +31,7 @@ This 23 KB guide contains everything you need:
 Production-ready TTL files for deployment (checked into git):
 
 - **`deduplicated_knowledge_graph.ttl`** (129 MB)
-  - Unified KG from 4 frameworks (ESCO, O*NET, Singapore, Canada)
+  - Unified KG from 4 frameworks (ESCO, O*NET, Singapore, Oasis)
   - 1,726,471 triples
   - 6,372 unique occupations
   - 14,598+ skills
@@ -90,7 +90,7 @@ curl "http://localhost:5000/api/kg/occupations/search?q=developer"
 | **Triples** | 1,726,471 |
 | **Occupations** | 6,372 unique |
 | **Skills** | 14,598+ |
-| **Frameworks** | 4 (CA, ESCO, O*NET, SG) |
+| **Frameworks** | 4 (Oasis, ESCO, O*NET, SG) |
 
 ---
 

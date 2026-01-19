@@ -105,32 +105,32 @@ const LandingPage = () => {
                     {/* Right Side - Content */}
                     <div className="hero-content-section">
                         <div className="hero-content">
-                            <h1 className="hero-title">
-                                <span className="gradient-text">Your JD, Elevated</span>
-                            </h1>
+                            <h2 className="hero-title">
+                                <span className="gradient-text">Elevate Your JD!</span>
+                            </h2>
                             <ul className="hero-value-props">
-                                <li>Create from Role Context</li>
-                                <li>Enhance with 15,000+ Global Skills</li>
+                                <li>Build from Role Context</li>
+                                <li>Enhance with Global Skills Intelligence.</li>
                             </ul>
-                            <p className="hero-features-title">Powered by</p>
+                            <p className="hero-features-title">Capabilities include:</p>
                             <div className="hero-features">
                                 <div className="feature-item">
                                     <svg viewBox="0 0 24 24" fill="none" width="24" height="24">
                                         <path d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                     </svg>
-                                    <span>5 global skill frameworks (SFIA, ESCO, O*NET, Singapore, Canada)</span>
+                                    <span>Skill enrichment from 15,000+ global competencies</span>
                                 </div>
                                 <div className="feature-item">
                                     <svg viewBox="0 0 24 24" fill="none" width="24" height="24">
                                         <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                     </svg>
-                                    <span>AI-powered enhancement</span>
+                                    <span>Alignment with leading global frameworks (SFIA, ESCO, O*NET, Singapore, OASIS)</span>
                                 </div>
                                 <div className="feature-item">
                                     <svg viewBox="0 0 24 24" fill="none" width="24" height="24">
                                         <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                     </svg>
-                                    <span>Organizational context aware</span>
+                                    <span>AI-powered role and competency augmentation</span>
                                 </div>
                             </div>
                         </div>

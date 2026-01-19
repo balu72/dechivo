@@ -32,7 +32,7 @@ Dechivo is an AI-powered platform that helps create and enhance job descriptions
 ✅ **Smart Skills Autocomplete** with multi-source search  
 ✅ **Primary & Secondary Skills** separation  
 ✅ **Unified Knowledge Graph** with 1.73M triples  
-✅ **Multi-framework Intelligence** (SFIA, ESCO, O*NET, Singapore, Canada)
+✅ **Multi-framework Intelligence** (SFIA, ESCO, O*NET, Singapore, Oasis)
 
 ---
 
@@ -66,7 +66,7 @@ Dechivo is an AI-powered platform that helps create and enhance job descriptions
   - 🇪🇺 ESCO (European Standards)
   - 🇺🇸 O*NET (US Occupational Network)
   - 🇸🇬 Singapore SkillsFuture
-  - 🇨🇦 Canada OASIS
+  - 🇨🇦 OASIS (Canada)
 - **1.73 million triples** (deduplicated)
 - **6,372 unique occupations**
 - **14,598+ skills**
@@ -137,7 +137,7 @@ Frontend (Skills autocomplete, JD enhancement)
 | **Total Triples** | 1,726,471 |
 | **Unique Occupations** | 6,372 |
 | **Total Skills** | 14,598+ |
-| **Frameworks** | 5 (SFIA, ESCO, O*NET, Singapore, Canada) |
+| **Frameworks** | 5 (SFIA, ESCO, O*NET, Singapore, Oasis) |
 | **File Size** | 128.97 MB |
 | **Duplicates Removed** | 529 occupation groups |
 
@@ -712,7 +712,7 @@ grep JWT_SECRET_KEY backend/.env
 - **ESCO**: European Skills, Competences, Qualifications and Occupations
 - **O*NET**: Occupational Information Network (US Department of Labor)
 - **Singapore SkillsFuture**: Singapore Skills Framework
-- **Canada OASIS**: Canadian occupation classification
+- **OASIS**: Canadian occupation classification
 
 ### Technologies
 
