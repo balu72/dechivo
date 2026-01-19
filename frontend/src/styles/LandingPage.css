@@ -235,12 +235,13 @@ body {
 }
 
 .hero-title {
-  font-size: 3.5rem;
+  font-size: 2.75rem;
   font-weight: 800;
   line-height: 1.1;
   margin-bottom: 1.5rem;
   color: var(--text-primary);
   letter-spacing: -1px;
+  white-space: nowrap;
 }
 
 .hero-title .gradient-text {
@@ -369,8 +370,8 @@ body {
 }
 
 .hero-image-section .hero-illustration {
-  max-width: 80%;
-  max-height: 70vh;
+  max-width: 65%;
+  max-height: 60vh;
   object-fit: contain;
 }
 
@@ -401,7 +402,8 @@ body {
   align-items: center;
   gap: 0.75rem;
   color: var(--text-secondary);
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
+  white-space: nowrap;
 }
 
 .feature-item svg {
@@ -410,9 +412,9 @@ body {
 }
 
 .hero-cta-bottom {
-  position: absolute;
-  bottom: 3rem;
-  right: 4rem;
+  margin-top: 2rem;
+  display: flex;
+  justify-content: flex-end;
 }
 
 .btn-enhance {
