@@ -23,6 +23,147 @@ const EnhanceJDPage = () => {
     const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
     const [showInterviewPlan, setShowInterviewPlan] = useState(false);
 
+    // Helper to format interview plan: remove markdown and style headings
+    const formatInterviewPlan = (text) => {
+        if (!text) return null;
+
+        // Split into lines
+        const lines = text.split('\n');
+        const elements = [];
+        let currentParagraph = [];
+
+        const flushParagraph = () => {
+            if (currentParagraph.length > 0) {
+                elements.push(
+                    <p key={`p-${elements.length}`} style={{ margin: '0.5rem 0', lineHeight: '1.6' }}>
+                        {currentParagraph.join(' ')}
+                    </p>
+                );
+                currentParagraph = [];
+            }
+        };
+
+        lines.forEach((line, index) => {
+            const trimmed = line.trim();
+
+            // Skip empty lines but flush paragraph
+            if (!trimmed) {
+                flushParagraph();
+                return;
+            }
+
+            // Any markdown heading (####, ###, ##, #) - strip the # characters
+            if (/^#{1,6}\s/.test(trimmed)) {
+                flushParagraph();
+                const headingText = trimmed.replace(/^#+\s*/, '');
+                const hashCount = trimmed.match(/^#+/)[0].length;
+
+                // Style based on heading level - questions/subsections smaller
+                const styles = {
+                    1: { fontSize: '1.5rem', fontWeight: '700', color: '#1F2937', marginTop: '1.5rem', marginBottom: '0.75rem', borderBottom: '2px solid #3B82F6', paddingBottom: '0.5rem' },
+                    2: { fontSize: '0.95rem', fontWeight: '600', color: '#374151', marginTop: '0.75rem', marginBottom: '0.35rem' },
+                    3: { fontSize: '0.9rem', fontWeight: '600', color: '#4B5563', marginTop: '0.5rem', marginBottom: '0.25rem' },
+                    4: { fontSize: '0.875rem', fontWeight: '500', color: '#4B5563', marginTop: '0.5rem', marginBottom: '0.25rem' },
+                    5: { fontSize: '0.85rem', fontWeight: '500', color: '#6B7280', marginTop: '0.35rem', marginBottom: '0.2rem' },
+                    6: { fontSize: '0.825rem', fontWeight: '500', color: '#6B7280', marginTop: '0.35rem', marginBottom: '0.2rem' }
+                };
+
+                const style = styles[Math.min(hashCount, 6)] || styles[4];
+                const Tag = hashCount <= 2 ? 'h2' : hashCount <= 4 ? 'h3' : 'h4';
+
+                elements.push(
+                    <Tag key={`h-${index}`} style={style}>
+                        {headingText}
+                    </Tag>
+                );
+                return;
+            }
+
+
+            // Numbered items (e.g., "1. Role Context" or "1. Solve a coding challenge...")
+            if (/^\d+\.\s+[A-Z]/.test(trimmed)) {
+                flushParagraph();
+
+                // Section titles are typically SHORT (< 50 chars), don't have parentheses, 
+                // don't end with period or question mark
+                // Exercises/instructions/questions are longer or end with . or ?
+                const isSectionTitle = trimmed.length < 50 && !trimmed.includes('(') && !trimmed.endsWith('.') && !trimmed.endsWith('?');
+
+                if (isSectionTitle) {
+                    // Section title - larger, prominent
+                    elements.push(
+                        <h2 key={`num-${index}`} style={{
+                            fontSize: '1.35rem',
+                            fontWeight: '700',
+                            color: '#1F2937',
+                            marginTop: '1.75rem',
+                            marginBottom: '0.75rem'
+                        }}>
+                            {trimmed}
+                        </h2>
+                    );
+                } else {
+                    // Numbered instruction/exercise/question - smaller font
+                    elements.push(
+                        <p key={`numitem-${index}`} style={{
+                            fontSize: '0.9rem',
+                            fontWeight: '500',
+                            color: '#374151',
+                            marginTop: '0.5rem',
+                            marginBottom: '0.25rem',
+                            paddingLeft: '0.5rem'
+                        }}>
+                            {trimmed}
+                        </p>
+                    );
+                }
+                return;
+            }
+
+            // Bullet points: - or * or •
+            if (/^[-*•]\s/.test(trimmed)) {
+                flushParagraph();
+                const bulletText = trimmed.replace(/^[-*•]\s*/, '').replace(/\*\*/g, '');
+                elements.push(
+                    <div key={`bullet-${index}`} style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '0.5rem',
+                        marginLeft: '1rem',
+                        marginBottom: '0.25rem'
+                    }}>
+                        <span style={{ color: '#10B981', fontWeight: 'bold' }}>•</span>
+                        <span>{bulletText}</span>
+                    </div>
+                );
+                return;
+            }
+
+            // Bold text sections (e.g., **Purpose:**)
+            if (trimmed.startsWith('**') && trimmed.includes(':**')) {
+                flushParagraph();
+                const cleanText = trimmed.replace(/\*\*/g, '');
+                const [label, ...rest] = cleanText.split(':');
+                elements.push(
+                    <p key={`bold-${index}`} style={{ margin: '0.5rem 0' }}>
+                        <strong style={{ color: '#1F2937' }}>{label}:</strong>
+                        {rest.length > 0 ? ` ${rest.join(':')}` : ''}
+                    </p>
+                );
+                return;
+            }
+
+            // Regular text - accumulate into paragraph
+            const cleanLine = trimmed.replace(/\*\*/g, '').replace(/\*/g, '');
+            currentParagraph.push(cleanLine);
+        });
+
+        // Flush remaining paragraph
+        flushParagraph();
+
+        return elements;
+    };
+
     useEffect(() => {
         if (location.state?.enhancedJD) {
             setEnhancedJD(location.state.enhancedJD);
@@ -93,7 +234,9 @@ const EnhanceJDPage = () => {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    job_description: enhancedJD
+                    job_description: enhancedJD,
+                    role_title: resultData?.orgContext?.role_title || '',
+                    role_grade: resultData?.orgContext?.role_grade || ''
                 }),
             });
 
@@ -301,12 +444,21 @@ const EnhanceJDPage = () => {
                                     </button>
                                 </div>
                             </div>
-                            <textarea
-                                className="enhanced-jd-textarea"
-                                value={interviewPlan}
-                                readOnly
-                                rows="15"
-                            />
+                            <div
+                                className="interview-plan-content"
+                                style={{
+                                    padding: '1.5rem',
+                                    border: '2px solid #E5E7EB',
+                                    borderRadius: '0.75rem',
+                                    backgroundColor: '#F9FAFB',
+                                    maxHeight: '600px',
+                                    overflowY: 'auto',
+                                    fontSize: '0.9375rem',
+                                    color: '#374151'
+                                }}
+                            >
+                                {formatInterviewPlan(interviewPlan)}
+                            </div>
                         </div>
                     )}
 

@@ -638,14 +638,26 @@ def create_interview_plan_endpoint():
     """
     Endpoint to create an interview plan from a job description (Protected)
     
+    Uses seniority-aware prompt selection based on role_title and role_grade.
+    
     Request body:
         job_description: str - The job description text
+        role_title: str (optional) - Job title for seniority detection
+        role_grade: str (optional) - Grade/band for seniority detection
+    
+    Response:
+        interview_plan: str - The generated interview plan
+        seniority_level: str - Detected seniority level used for prompt selection
     """
     logger.info("POST /api/create-interview-plan - Interview plan request received")
     try:
         current_user_id = get_jwt_identity()
         data = request.get_json()
         job_description = data.get('job_description', '')
+        role_title = data.get('role_title', '')
+        role_grade = data.get('role_grade', '')
+        
+        logger.info(f"  Role Title: {role_title}, Role Grade: {role_grade}")
         
         if not job_description:
             return jsonify({
@@ -653,7 +665,11 @@ def create_interview_plan_endpoint():
             }), 400
             
         from services.jd_services import create_interview_plan
-        result = create_interview_plan(job_description)
+        result = create_interview_plan(
+            job_description=job_description,
+            role_title=role_title,
+            role_grade=role_grade
+        )
         
         if not result.get('success'):
             return jsonify({
@@ -662,7 +678,8 @@ def create_interview_plan_endpoint():
             
         return jsonify({
             'success': True,
-            'interview_plan': result.get('interview_plan')
+            'interview_plan': result.get('interview_plan'),
+            'seniority_level': result.get('seniority_level', 'individual_contributor')
         }), 200
         
     except Exception as e:

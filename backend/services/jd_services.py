@@ -751,23 +751,44 @@ def enhance_jd(job_description: str, org_context: Dict[str, Any] = None) -> Dict
 
 from prompts.interview_plan_prompts import (
     get_interview_plan_system_prompt,
-    format_interview_plan_user_prompt
+    format_interview_plan_user_prompt,
+    get_seniority_aware_interview_prompt,
+    SeniorityLevel
 )
 
-def create_interview_plan(job_description: str, ollama_model: str = None) -> Dict[str, Any]:
+def create_interview_plan(
+    job_description: str, 
+    role_title: str = None, 
+    role_grade: str = None,
+    ollama_model: str = None
+) -> Dict[str, Any]:
     """
     Create a comprehensive interview plan for a given job description.
     
+    Uses seniority-aware prompt selection based on role title and grade:
+    - IC (Individual Contributor): Engineer, Developer, Analyst levels
+    - Team Lead: Tech Lead, Staff Engineer, Principal levels
+    - Manager: Engineering Manager, Product Manager levels
+    - Senior Manager: Sr. Manager, Group Manager levels
+    - Director: Director, VP, Head of levels
+    
     Args:
         job_description: The job description text
+        role_title: Job title for seniority detection (optional)
+        role_grade: Grade/band for seniority detection (optional)
         ollama_model: Optional Ollama model to use
     
     Returns:
-        Dictionary containing interview plan and status
+        Dictionary containing interview plan, detected seniority, and status
     """
     logger.info("API: create_interview_plan called")
+    logger.info(f"  Role Title: {role_title}, Role Grade: {role_grade}")
     
     try:
+        # Detect seniority and get appropriate prompt
+        seniority, system_prompt = get_seniority_aware_interview_prompt(role_title, role_grade)
+        logger.info(f"  Detected Seniority: {seniority.value}")
+        
         # Initialize LLM (OpenAI primary, Ollama fallback)
         llm = None
         openai_api_key = os.getenv("OPENAI_API_KEY", "").strip()
@@ -802,8 +823,7 @@ def create_interview_plan(job_description: str, ollama_model: str = None) -> Dic
         if llm is None:
             raise RuntimeError("No LLM available for interview plan generation")
         
-        # Get prompts
-        system_prompt = get_interview_plan_system_prompt()
+        # Format user prompt with JD
         user_prompt = format_interview_plan_user_prompt(job_description)
         
         messages = [
@@ -818,6 +838,7 @@ def create_interview_plan(job_description: str, ollama_model: str = None) -> Dic
         return {
             'success': True,
             'interview_plan': interview_plan,
+            'seniority_level': seniority.value,
             'error': ''
         }
         
@@ -826,5 +847,6 @@ def create_interview_plan(job_description: str, ollama_model: str = None) -> Dic
         return {
             'success': False,
             'interview_plan': '',
+            'seniority_level': 'unknown',
             'error': str(e)
         }
