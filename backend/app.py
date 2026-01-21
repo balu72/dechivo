@@ -644,6 +644,11 @@ def create_interview_plan_endpoint():
         job_description: str - The job description text
         role_title: str (optional) - Job title for seniority detection
         role_grade: str (optional) - Grade/band for seniority detection
+        interview_context: dict (optional) - Additional context for interview plan
+            - customer_mandates: Requirements from customer/org
+            - org_discretion: Specific discretion with org/customer
+            - previous_hiring_decisions: Decisions from previous hiring
+            - additional_notes: Any other notes
     
     Response:
         interview_plan: str - The generated interview plan
@@ -656,8 +661,10 @@ def create_interview_plan_endpoint():
         job_description = data.get('job_description', '')
         role_title = data.get('role_title', '')
         role_grade = data.get('role_grade', '')
+        interview_context = data.get('interview_context', None)
         
         logger.info(f"  Role Title: {role_title}, Role Grade: {role_grade}")
+        logger.info(f"  Interview Context: {interview_context is not None}")
         
         if not job_description:
             return jsonify({
@@ -668,7 +675,8 @@ def create_interview_plan_endpoint():
         result = create_interview_plan(
             job_description=job_description,
             role_title=role_title,
-            role_grade=role_grade
+            role_grade=role_grade,
+            interview_context=interview_context
         )
         
         if not result.get('success'):
@@ -687,6 +695,7 @@ def create_interview_plan_endpoint():
         return jsonify({
             'error': str(e)
         }), 500
+
 
 @app.route('/api/search-skills', methods=['GET'])
 @jwt_required()

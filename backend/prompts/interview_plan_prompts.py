@@ -531,3 +531,59 @@ def get_seniority_aware_interview_prompt(role_title: str = None, role_grade: str
     seniority = get_seniority_level(role_title, role_grade)
     prompt = get_interview_plan_prompt_for_seniority(seniority)
     return seniority, prompt
+
+
+def format_interview_plan_user_prompt_with_context(
+    job_description: str,
+    interview_context: dict = None
+) -> str:
+    """
+    Format user prompt with JD and interview context.
+    
+    Args:
+        job_description: The job description text
+        interview_context: Dictionary containing:
+            - customer_mandates: Requirements from customer/org
+            - org_discretion: Specific discretion with org/customer
+            - previous_hiring_decisions: Decisions from previous hiring
+            - additional_notes: Any other notes
+    
+    Returns:
+        Formatted user prompt string
+    """
+    context_section = ""
+    
+    if interview_context:
+        parts = []
+        
+        if interview_context.get('customer_mandates') and interview_context['customer_mandates'].strip():
+            parts.append(f"**Customer/Org Mandates:** {interview_context['customer_mandates'].strip()}")
+        
+        if interview_context.get('org_discretion') and interview_context['org_discretion'].strip():
+            parts.append(f"**Org Discretion:** {interview_context['org_discretion'].strip()}")
+        
+        if interview_context.get('previous_hiring_decisions') and interview_context['previous_hiring_decisions'].strip():
+            parts.append(f"**Previous Hiring Decisions:** {interview_context['previous_hiring_decisions'].strip()}")
+        
+        if interview_context.get('additional_notes') and interview_context['additional_notes'].strip():
+            parts.append(f"**Additional Notes:** {interview_context['additional_notes'].strip()}")
+        
+        if parts:
+            context_section = f"""
+
+## Interview Context (IMPORTANT - Must be incorporated into the plan)
+
+The following organizational context has been provided and MUST be considered when creating the interview plan:
+
+{chr(10).join(parts)}
+
+Please ensure the interview plan specifically addresses and incorporates these requirements where applicable.
+"""
+    
+    return f"""Please analyze the following job description and create a comprehensive interview plan.
+
+## Job Description
+
+{job_description}
+{context_section}
+"""

@@ -60,24 +60,21 @@ const OrgContextInputPage = () => {
         setStatusMessage({ type: 'info', text: 'Generating comprehensive interview plan...' });
 
         try {
-            // Combine JD with interview context
-            const contextualJD = `${enhancedJD}
-
---- Interview Context ---
-Customer/Org Mandates: ${interviewContext.customer_mandates || 'None specified'}
-Org Discretion: ${interviewContext.org_discretion || 'None specified'}
-Previous Hiring Decisions: ${interviewContext.previous_hiring_decisions || 'None specified'}
-Additional Notes: ${interviewContext.additional_notes || 'None'}`;
-
             const response = await authenticatedFetch(`${API_BASE_URL}/api/create-interview-plan`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    job_description: contextualJD,
+                    job_description: enhancedJD,
                     role_title: roleTitle,
-                    role_grade: roleGrade
+                    role_grade: roleGrade,
+                    interview_context: {
+                        customer_mandates: interviewContext.customer_mandates || '',
+                        org_discretion: interviewContext.org_discretion || '',
+                        previous_hiring_decisions: interviewContext.previous_hiring_decisions || '',
+                        additional_notes: interviewContext.additional_notes || ''
+                    }
                 }),
             });
 

@@ -752,6 +752,7 @@ def enhance_jd(job_description: str, org_context: Dict[str, Any] = None) -> Dict
 from prompts.interview_plan_prompts import (
     get_interview_plan_system_prompt,
     format_interview_plan_user_prompt,
+    format_interview_plan_user_prompt_with_context,
     get_seniority_aware_interview_prompt,
     SeniorityLevel
 )
@@ -760,6 +761,7 @@ def create_interview_plan(
     job_description: str, 
     role_title: str = None, 
     role_grade: str = None,
+    interview_context: dict = None,
     ollama_model: str = None
 ) -> Dict[str, Any]:
     """
@@ -776,6 +778,11 @@ def create_interview_plan(
         job_description: The job description text
         role_title: Job title for seniority detection (optional)
         role_grade: Grade/band for seniority detection (optional)
+        interview_context: Additional context for interview plan (optional)
+            - customer_mandates: Requirements from customer/org
+            - org_discretion: Specific discretion with org/customer
+            - previous_hiring_decisions: Decisions from previous hiring
+            - additional_notes: Any other notes
         ollama_model: Optional Ollama model to use
     
     Returns:
@@ -783,6 +790,7 @@ def create_interview_plan(
     """
     logger.info("API: create_interview_plan called")
     logger.info(f"  Role Title: {role_title}, Role Grade: {role_grade}")
+    logger.info(f"  Interview Context provided: {interview_context is not None}")
     
     try:
         # Detect seniority and get appropriate prompt
@@ -823,8 +831,11 @@ def create_interview_plan(
         if llm is None:
             raise RuntimeError("No LLM available for interview plan generation")
         
-        # Format user prompt with JD
-        user_prompt = format_interview_plan_user_prompt(job_description)
+        # Format user prompt with JD and interview context
+        user_prompt = format_interview_plan_user_prompt_with_context(
+            job_description, 
+            interview_context
+        )
         
         messages = [
             SystemMessage(content=system_prompt),
@@ -850,3 +861,4 @@ def create_interview_plan(
             'seniority_level': 'unknown',
             'error': str(e)
         }
+
