@@ -11,6 +11,8 @@ const InterviewPlanDisplayPage = () => {
 
     const [statusMessage, setStatusMessage] = useState(null);
     const [showUserMenu, setShowUserMenu] = useState(false);
+    // Workflow states: 'view' (initial), 'editing', 'published'
+    const [workflowState, setWorkflowState] = useState('view');
 
     // Data from OrgContextInputPage
     const [interviewPlan, setInterviewPlan] = useState('');
@@ -189,6 +191,16 @@ const InterviewPlanDisplayPage = () => {
         setTimeout(() => setStatusMessage(null), 3000);
     };
 
+    const handleEdit = () => {
+        setWorkflowState('editing');
+    };
+
+    const handlePublish = () => {
+        setWorkflowState('published');
+        setStatusMessage({ type: 'success', text: 'Interview plan published!' });
+        setTimeout(() => setStatusMessage(null), 3000);
+    };
+
     const handleBack = () => {
         navigate(-1); // Go back in browser history
     };
@@ -271,22 +283,40 @@ const InterviewPlanDisplayPage = () => {
                                 <svg viewBox="0 0 24 24" fill="none" width="24" height="24">
                                     <path d="M8 7H16M8 11H16M8 15H13M17 21L12 18L7 21V5C7 3.89543 7.89543 3 9 3H15C16.1046 3 17 3.89543 17 5V21Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                 </svg>
-                                <div>
-                                    <h2>Interview Plan</h2>
-                                    {roleTitle && (
-                                        <span className="role-title">{roleTitle}</span>
-                                    )}
-                                </div>
+                                <h2>Interview Plan</h2>
                             </div>
-                            <button
-                                className="btn btn-secondary btn-icon"
-                                onClick={handleDownload}
-                            >
-                                <svg viewBox="0 0 24 24" fill="none" width="20" height="20">
-                                    <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15M7 10L12 15M12 15L17 10M12 15V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                </svg>
-                                Download
-                            </button>
+                            <div className="header-actions">
+                                <button
+                                    className={`btn btn-icon ${workflowState === 'view' ? 'btn-primary' : 'btn-secondary'}`}
+                                    onClick={handleEdit}
+                                    disabled={workflowState !== 'view'}
+                                >
+                                    <svg viewBox="0 0 24 24" fill="none" width="20" height="20">
+                                        <path d="M11 4H7C5.89543 4 5 4.89543 5 6V18C5 19.1046 5.89543 20 7 20H17C18.1046 20 19 19.1046 19 18V14M17.5 2.5C18.3284 1.67157 19.6716 1.67157 20.5 2.5C21.3284 3.32843 21.3284 4.67157 20.5 5.5L11 15H8V12L17.5 2.5Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                    Edit
+                                </button>
+                                <button
+                                    className={`btn btn-icon ${workflowState === 'editing' ? 'btn-primary' : 'btn-secondary'}`}
+                                    onClick={handlePublish}
+                                    disabled={workflowState !== 'editing'}
+                                >
+                                    <svg viewBox="0 0 24 24" fill="none" width="20" height="20">
+                                        <path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                    Publish
+                                </button>
+                                <button
+                                    className={`btn btn-icon ${workflowState === 'published' ? 'btn-primary' : 'btn-secondary'}`}
+                                    onClick={handleDownload}
+                                    disabled={workflowState !== 'published'}
+                                >
+                                    <svg viewBox="0 0 24 24" fill="none" width="20" height="20">
+                                        <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15M7 10L12 15M12 15L17 10M12 15V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                    Download
+                                </button>
+                            </div>
                         </div>
 
                         <div className="plan-content">
