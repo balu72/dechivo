@@ -376,7 +376,7 @@ const CreateJDPage = () => {
 
                             {/* Skills Details - Primary Skills */}
                             <div className="org-context-group">
-                                <h4>Primary Skills</h4>
+                                <h4>Skill Details</h4>
                                 <div className="form-row-inline">
                                     <div className="form-field" style={{ position: 'relative' }}>
                                         <label>Primary Skills (Must-have)</label>
