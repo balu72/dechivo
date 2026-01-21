@@ -119,25 +119,25 @@ const LandingPage = () => {
                                     <svg viewBox="0 0 24 24" fill="none" width="24" height="24">
                                         <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                     </svg>
-                                    <span>Skill enrichment from 15,000+ global competencies</span>
+                                    <span>Skills intelligence across global standards</span>
                                 </div>
                                 <div className="feature-item">
                                     <svg viewBox="0 0 24 24" fill="none" width="24" height="24">
                                         <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                     </svg>
-                                    <span>Alignment with leading global frameworks (SFIA, ESCO, O*NET, Singapore, OASIS)</span>
+                                    <span>Role definitions aligned to global skill frameworks</span>
                                 </div>
                                 <div className="feature-item">
                                     <svg viewBox="0 0 24 24" fill="none" width="24" height="24">
                                         <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                     </svg>
-                                    <span>AI-powered role and competency augmentation</span>
+                                    <span>AI-driven role and competency augmentation</span>
                                 </div>
                                 <div className="feature-item">
                                     <svg viewBox="0 0 24 24" fill="none" width="24" height="24">
                                         <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                     </svg>
-                                    <span>Structured interview plans mapped to role skills and proficiency levels</span>
+                                    <span>Interview plans based on role-aware context graph</span>
                                 </div>
                             </div>
                         </div>
