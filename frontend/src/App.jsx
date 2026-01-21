@@ -7,6 +7,8 @@ import RegisterPage from './pages/RegisterPage'
 import VerifyEmailPage from './pages/VerifyEmailPage'
 import CreateJDPage from './pages/CreateJDPage'
 import EnhanceJDPage from './pages/EnhanceJDPage'
+import OrgContextInputPage from './pages/OrgContextInputPage'
+import InterviewPlanDisplayPage from './pages/InterviewPlanDisplayPage'
 
 function App() {
   return (
@@ -33,6 +35,22 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/interview-context"
+            element={
+              <ProtectedRoute>
+                <OrgContextInputPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/interview-plan"
+            element={
+              <ProtectedRoute>
+                <InterviewPlanDisplayPage />
+              </ProtectedRoute>
+            }
+          />
         </Routes>
       </Router>
     </AuthProvider>
@@ -40,3 +58,4 @@ function App() {
 }
 
 export default App
+

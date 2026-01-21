@@ -19,150 +19,6 @@ const EnhanceJDPage = () => {
     const [resultData, setResultData] = useState(null);
     // Workflow states: 'view' (initial), 'editing', 'published'
     const [workflowState, setWorkflowState] = useState('view');
-    const [interviewPlan, setInterviewPlan] = useState('');
-    const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
-    const [showInterviewPlan, setShowInterviewPlan] = useState(false);
-
-    // Helper to format interview plan: remove markdown and style headings
-    const formatInterviewPlan = (text) => {
-        if (!text) return null;
-
-        // Split into lines
-        const lines = text.split('\n');
-        const elements = [];
-        let currentParagraph = [];
-
-        const flushParagraph = () => {
-            if (currentParagraph.length > 0) {
-                elements.push(
-                    <p key={`p-${elements.length}`} style={{ margin: '0.5rem 0', lineHeight: '1.6' }}>
-                        {currentParagraph.join(' ')}
-                    </p>
-                );
-                currentParagraph = [];
-            }
-        };
-
-        lines.forEach((line, index) => {
-            const trimmed = line.trim();
-
-            // Skip empty lines but flush paragraph
-            if (!trimmed) {
-                flushParagraph();
-                return;
-            }
-
-            // Any markdown heading (####, ###, ##, #) - strip the # characters
-            if (/^#{1,6}\s/.test(trimmed)) {
-                flushParagraph();
-                const headingText = trimmed.replace(/^#+\s*/, '');
-                const hashCount = trimmed.match(/^#+/)[0].length;
-
-                // Style based on heading level - questions/subsections smaller
-                const styles = {
-                    1: { fontSize: '1.5rem', fontWeight: '700', color: '#1F2937', marginTop: '1.5rem', marginBottom: '0.75rem', borderBottom: '2px solid #3B82F6', paddingBottom: '0.5rem' },
-                    2: { fontSize: '0.95rem', fontWeight: '600', color: '#374151', marginTop: '0.75rem', marginBottom: '0.35rem' },
-                    3: { fontSize: '0.9rem', fontWeight: '600', color: '#4B5563', marginTop: '0.5rem', marginBottom: '0.25rem' },
-                    4: { fontSize: '0.875rem', fontWeight: '500', color: '#4B5563', marginTop: '0.5rem', marginBottom: '0.25rem' },
-                    5: { fontSize: '0.85rem', fontWeight: '500', color: '#6B7280', marginTop: '0.35rem', marginBottom: '0.2rem' },
-                    6: { fontSize: '0.825rem', fontWeight: '500', color: '#6B7280', marginTop: '0.35rem', marginBottom: '0.2rem' }
-                };
-
-                const style = styles[Math.min(hashCount, 6)] || styles[4];
-                const Tag = hashCount <= 2 ? 'h2' : hashCount <= 4 ? 'h3' : 'h4';
-
-                elements.push(
-                    <Tag key={`h-${index}`} style={style}>
-                        {headingText}
-                    </Tag>
-                );
-                return;
-            }
-
-
-            // Numbered items (e.g., "1. Role Context" or "1. Solve a coding challenge...")
-            if (/^\d+\.\s+[A-Z]/.test(trimmed)) {
-                flushParagraph();
-
-                // Section titles are typically SHORT (< 50 chars), don't have parentheses, 
-                // don't end with period or question mark
-                // Exercises/instructions/questions are longer or end with . or ?
-                const isSectionTitle = trimmed.length < 50 && !trimmed.includes('(') && !trimmed.endsWith('.') && !trimmed.endsWith('?');
-
-                if (isSectionTitle) {
-                    // Section title - larger, prominent
-                    elements.push(
-                        <h2 key={`num-${index}`} style={{
-                            fontSize: '1.35rem',
-                            fontWeight: '700',
-                            color: '#1F2937',
-                            marginTop: '1.75rem',
-                            marginBottom: '0.75rem'
-                        }}>
-                            {trimmed}
-                        </h2>
-                    );
-                } else {
-                    // Numbered instruction/exercise/question - smaller font
-                    elements.push(
-                        <p key={`numitem-${index}`} style={{
-                            fontSize: '0.9rem',
-                            fontWeight: '500',
-                            color: '#374151',
-                            marginTop: '0.5rem',
-                            marginBottom: '0.25rem',
-                            paddingLeft: '0.5rem'
-                        }}>
-                            {trimmed}
-                        </p>
-                    );
-                }
-                return;
-            }
-
-            // Bullet points: - or * or •
-            if (/^[-*•]\s/.test(trimmed)) {
-                flushParagraph();
-                const bulletText = trimmed.replace(/^[-*•]\s*/, '').replace(/\*\*/g, '');
-                elements.push(
-                    <div key={`bullet-${index}`} style={{
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        gap: '0.5rem',
-                        marginLeft: '1rem',
-                        marginBottom: '0.25rem'
-                    }}>
-                        <span style={{ color: '#10B981', fontWeight: 'bold' }}>•</span>
-                        <span>{bulletText}</span>
-                    </div>
-                );
-                return;
-            }
-
-            // Bold text sections (e.g., **Purpose:**)
-            if (trimmed.startsWith('**') && trimmed.includes(':**')) {
-                flushParagraph();
-                const cleanText = trimmed.replace(/\*\*/g, '');
-                const [label, ...rest] = cleanText.split(':');
-                elements.push(
-                    <p key={`bold-${index}`} style={{ margin: '0.5rem 0' }}>
-                        <strong style={{ color: '#1F2937' }}>{label}:</strong>
-                        {rest.length > 0 ? ` ${rest.join(':')}` : ''}
-                    </p>
-                );
-                return;
-            }
-
-            // Regular text - accumulate into paragraph
-            const cleanLine = trimmed.replace(/\*\*/g, '').replace(/\*/g, '');
-            currentParagraph.push(cleanLine);
-        });
-
-        // Flush remaining paragraph
-        flushParagraph();
-
-        return elements;
-    };
 
     useEffect(() => {
         if (location.state?.enhancedJD) {
@@ -221,51 +77,16 @@ const EnhanceJDPage = () => {
         setTimeout(() => setStatusMessage(null), 3000);
     };
 
-    const handleInterviewPlan = async () => {
-        if (!enhancedJD) return;
-
-        setIsGeneratingPlan(true);
-        setStatusMessage({ type: 'info', text: 'Generating comprehensive interview plan...' });
-
-        try {
-            const response = await authenticatedFetch(`${API_BASE_URL}/api/create-interview-plan`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    job_description: enhancedJD,
-                    role_title: resultData?.orgContext?.role_title || '',
-                    role_grade: resultData?.orgContext?.role_grade || ''
-                }),
-            });
-
-            const data = await response.json();
-
-            if (response.ok && data.success) {
-                setInterviewPlan(data.interview_plan);
-                setShowInterviewPlan(true);
-                // Scroll to interview plan
-                setTimeout(() => {
-                    const el = document.getElementById('interview-plan-section');
-                    if (el) el.scrollIntoView({ behavior: 'smooth' });
-                }, 100);
-            } else {
-                setStatusMessage({
-                    type: 'error',
-                    text: data.error || 'Failed to generate interview plan'
-                });
+    const handleInterviewPlan = () => {
+        // Navigate to interview context input page
+        navigate('/interview-context', {
+            state: {
+                enhancedJD: enhancedJD,
+                roleTitle: resultData?.orgContext?.role_title || '',
+                roleGrade: resultData?.orgContext?.role_grade || '',
+                orgContext: resultData?.orgContext
             }
-        } catch (error) {
-            console.error('Interview plan error:', error);
-            setStatusMessage({
-                type: 'error',
-                text: 'Network error. Please try again.'
-            });
-        } finally {
-            setIsGeneratingPlan(false);
-            setTimeout(() => setStatusMessage(null), 3000);
-        }
+        });
     };
 
     if (!resultData) {
@@ -378,23 +199,13 @@ const EnhanceJDPage = () => {
                                     Download
                                 </button>
                                 <button
-                                    className={`btn btn-secondary btn-icon ${isGeneratingPlan ? 'loading' : ''}`}
-                                    onClick={handleInterviewPlan}
-                                    disabled={isGeneratingPlan}
-                                >
-                                    <svg viewBox="0 0 24 24" fill="none" width="20" height="20">
-                                        <path d="M8 7H16M8 11H16M8 15H13M17 21L12 18L7 21V5C7 3.89543 7.89543 3 9 3H15C16.1046 3 17 3.89543 17 5V21Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                    </svg>
-                                    {isGeneratingPlan ? 'Generating...' : 'Interview Plan'}
-                                </button>
-                                <button
                                     className="btn btn-ghost btn-icon"
                                     onClick={handleEnhanceAnother}
                                 >
                                     <svg viewBox="0 0 24 24" fill="none" width="20" height="20">
                                         <path d="M12 4V20M4 12H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                     </svg>
-                                    Create Another
+                                    Create Another JD
                                 </button>
                             </div>
                         </div>
@@ -405,62 +216,22 @@ const EnhanceJDPage = () => {
                             rows="20"
                             readOnly={workflowState !== 'editing'}
                         />
-                        <div className="char-count">
-                            {enhancedJD.length} characters
+                        {/* Bottom Row: Char count left, Interview Plan right */}
+                        <div className="jd-footer-row">
+                            <div className="char-count">
+                                {enhancedJD.length} characters
+                            </div>
+                            <button
+                                className="btn btn-primary btn-large"
+                                onClick={handleInterviewPlan}
+                            >
+                                <svg viewBox="0 0 24 24" fill="none" width="20" height="20">
+                                    <path d="M8 7H16M8 11H16M8 15H13M17 21L12 18L7 21V5C7 3.89543 7.89543 3 9 3H15C16.1046 3 17 3.89543 17 5V21Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                                + Interview Plan
+                            </button>
                         </div>
                     </div>
-
-                    {/* Interview Plan Section */}
-                    {showInterviewPlan && (
-                        <div id="interview-plan-section" className="enhanced-jd-section" style={{ marginTop: '2rem', borderTop: '1px solid #E5E7EB', paddingTop: '2rem' }}>
-                            <div className="section-header-row">
-                                <label className="section-label">
-                                    <svg viewBox="0 0 24 24" fill="none" width="20" height="20">
-                                        <path d="M8 7H16M8 11H16M8 15H13M17 21L12 18L7 21V5C7 3.89543 7.89543 3 9 3H15C16.1046 3 17 3.89543 17 5V21Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                    </svg>
-                                    Technical Interview Plan
-                                </label>
-                                <div className="results-actions">
-                                    <button
-                                        className="btn btn-secondary btn-icon"
-                                        onClick={() => {
-                                            const blob = new Blob([interviewPlan], { type: 'text/plain' });
-                                            const url = URL.createObjectURL(blob);
-                                            const link = document.createElement('a');
-                                            link.href = url;
-                                            link.download = `interview_plan.txt`;
-                                            document.body.appendChild(link);
-                                            link.click();
-                                            document.body.removeChild(link);
-                                            URL.revokeObjectURL(url);
-                                            setStatusMessage({ type: 'success', text: 'Interview plan downloaded!' });
-                                            setTimeout(() => setStatusMessage(null), 3000);
-                                        }}
-                                    >
-                                        <svg viewBox="0 0 24 24" fill="none" width="20" height="20">
-                                            <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15M7 10L12 15M12 15L17 10M12 15V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                        </svg>
-                                        Download Plan
-                                    </button>
-                                </div>
-                            </div>
-                            <div
-                                className="interview-plan-content"
-                                style={{
-                                    padding: '1.5rem',
-                                    border: '2px solid #E5E7EB',
-                                    borderRadius: '0.75rem',
-                                    backgroundColor: '#F9FAFB',
-                                    maxHeight: '600px',
-                                    overflowY: 'auto',
-                                    fontSize: '0.9375rem',
-                                    color: '#374151'
-                                }}
-                            >
-                                {formatInterviewPlan(interviewPlan)}
-                            </div>
-                        </div>
-                    )}
 
                 </div>
             </main>

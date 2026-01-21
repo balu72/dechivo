@@ -508,14 +508,14 @@ const CreateJDPage = () => {
 
                             {/* Additional Context */}
                             <div className="org-context-group" style={{ gridColumn: '1 / -1' }}>
-                                <h4>Additional Context (optional)</h4>
+                                <h4>Any Additional Information (optional)</h4>
                                 <div className="form-field">
 
                                     <textarea
-                                        placeholder="Enter any additional details, requirements, or context that would help create a better job description..."
+                                        placeholder="Enter any additional information, details, requirements that would help create a better job description..."
                                         value={orgContext.additional_context}
                                         onChange={(e) => handleOrgContextChange('additional_context', e.target.value)}
-                                        rows="4"
+                                        rows="2"
                                     />
                                 </div>
                             </div>
