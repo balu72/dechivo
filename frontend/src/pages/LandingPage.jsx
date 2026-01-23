@@ -106,7 +106,7 @@ const LandingPage = () => {
                     <div className="hero-content-section">
                         <div className="hero-content">
                             <h2 className="hero-title">
-                                <span className="gradient-text">Elevate Your Hiring Blueprint!</span>
+                                <span className="gradient-text">Elevate Your Hiring Greenprint!</span>
                             </h2>
                             <ul className="hero-value-props">
                                 <li>Create JD from role context</li>
